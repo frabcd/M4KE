@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "title": "CAD worker drilled and filleted solid smoke test",
+  "units": "mm",
+  "parts": [
+    {
+      "id": "base",
+      "name": "Filleted drilled plate",
+      "kind": "printed",
+      "material": "PLA test geometry",
+      "color": "#357FE6",
+      "shape": {"type": "box", "size": [60, 40, 8]},
+      "position": [20, 15, 4],
+      "rotation": [0, 0, 0],
+      "fillet": 1,
+      "holes": [
+        {"axis": "z", "diameter": 3.2, "position": [-20, -10, 0]},
+        {"axis": "z", "diameter": 3.2, "position": [20, -10, 0]},
+        {"axis": "z", "diameter": 3.2, "position": [-20, 10, 0]},
+        {"axis": "z", "diameter": 3.2, "position": [20, 10, 0]}
+      ]
+    },
+    {
+      "id": "wheel",
+      "name": "Through-bored wheel",
+      "kind": "printed",
+      "material": "PLA test geometry",
+      "color": "#EF8038",
+      "shape": {"type": "cylinder", "radius": 12, "height": 10},
+      "position": [65, 15, 12],
+      "rotation": [90, 0, 0],
+      "fillet": 0.5,
+      "holes": [{"axis": "z", "diameter": 3, "position": [0, 0, 0]}]
+    },
+    {
+      "id": "envelope",
+      "name": "Rotated component envelope",
+      "kind": "purchased",
+      "material": "Unspecified component envelope",
+      "color": "#424954",
+      "shape": {"type": "box", "size": [10, 20, 30]},
+      "position": [100, 10, 30],
+      "rotation": [21, 34, 57]
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+# Dependencies, build output and local caches
+node_modules/
+/dist/
+*.tsbuildinfo
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+/.venv*/
+/.setup/
+
+# Secrets and private runtime state (keep the blank configuration example)
+.env
+.env.*
+!.env.example
+/data/
+*.log
+/result.json
+test-results/
+/playwright-report/
+
+# Current-device operations are not reusable public source
+/deploy/
+/CONNECT-DGX-HOME.cmd
+/CONNECT-DGX-HOME.ps1
+/CONNECT-DGX-QWEN.cmd
+/CONNECT-DGX-QWEN.ps1
+/TEAM_COORDINATION.txt
+
+# Teammate-owned work: preserve locally; review rights separately before release
+/database/model-library/
+/integrations/
+/m4ke-video/
+/iphone18-concept/
+/M4KE-recording-guide.md
+/M4KE-video-skills-install.json
+
+# Private inputs, historical records and immutable review artifacts
+/docs/inputs/
+/docs/team/
+/docs/coordination/
+/docs/checkpoints/
+/docs/history/
+/docs/submission/artifacts/
+/docs/submission/clean-*/
+
+# Third-party source assets and generated acquisition records
+/catalog/sources/
+/catalog/models/
+/catalog/previews/
+/catalog/history/
+/catalog/source-index.json
+/catalog/model-inventory.json
+/catalog/submission-restore.json
+/catalog/offline-replay.json
+/catalog/verification.json
+/catalog/*.png
+/procurement/incoming/
+/procurement/snapshots/
+/procurement/evidence/
+/procurement/research/
+
+# Optional local slicer binaries, jobs, and device-specific diagnostics
+/printing/dgx/tools/
+/printing/dgx/flatpak/
+/printing/dgx/evidence/
+/printing/dgx/jobs/
+/printing/dgx/verification-fixture/
+/printing/dgx/setup-lock.json
+/printing/handoff-*/
+/printing/slice-*/
+/printing/bambu-*.json
+/printing/bambu-help*.txt
+
+# Desktop editor/OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Submission setup artifacts: private or third-party, not source release inputs.
+.setup/
+.venv-cad/
+__pycache__/
+*.pyc
+/catalog/sources/
+/catalog/models/
+/catalog/previews/
+/catalog/history/
+/catalog/source-index.json
+/catalog/model-inventory.json
+/catalog/submission-restore.json
+/catalog/offline-replay.json
+/catalog/verification.json
+/database/
+/procurement/incoming/
+/procurement/snapshots/
+/procurement/evidence/
+/procurement/research/
+/printing/dgx/tools/
+/printing/dgx/flatpak/
+/printing/dgx/evidence/
+/printing/dgx/jobs/
+/printing/dgx/verification-fixture/
+/printing/dgx/setup-lock.json
+/docs/submission/artifacts/
+/docs/submission/clean-*/

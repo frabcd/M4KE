@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "referenceId": "sound-car-pico-module-reference-v1",
+  "applicability": "LEGACY_MODULE_WIRING_RESEARCH_ONLY_NOT_SOUND_CAR_V1_KIT_BOM",
+  "kitOverride": "For sound-car-v1 use the job-generated KIT-HARDWARE-REFERENCE.json bound to its design hash. The source kit uses Pololu #1098 motors and #1420 60 mm wheels; this older #992 candidate is not substituted into that kit.",
+  "status": "PROPOSED_HARDWARE_NOT_PURCHASED_NOT_FITTED_NOT_PHYSICALLY_TESTED",
+  "sourcesCheckedAt": "2026-09-26T14:34:03Z",
+  "currency": null,
+  "budget": null,
+  "components": [
+    {
+      "id": "controller",
+      "name": "Raspberry Pi Pico or Pico H, original non-wireless RP2040 board",
+      "quantity": 1,
+      "source": "https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html",
+      "apiSource": "https://docs.micropython.org/en/latest/rp2/quickref.html",
+      "observedRatings": { "gpioLogicV": 3.3, "adcInputV": [0, 3.3], "micAdcGp": 26 },
+      "dimensionsMm": null,
+      "mountingPattern": null,
+      "price": null,
+      "stock": null,
+      "notes": "GP numbers are not physical header numbers. Firmware is not tested on this board. USB supplies the logic domain; never drive motors from Pico 3V3."
+    },
+    {
+      "id": "microphone",
+      "name": "Adafruit MAX4466 Electret Microphone Amplifier",
+      "sku": "1063",
+      "quantity": 1,
+      "source": "https://www.adafruit.com/product/1063",
+      "guide": "https://learn.adafruit.com/adafruit-microphone-amplifier-breakout",
+      "observedRatings": { "supplyRangeV": [2.4, 5], "gainRange": [25, 125], "dcBiasFractionOfSupply": 0.5 },
+      "proposedSupplyV": 3.3,
+      "dimensionsMm": null,
+      "mountingPattern": null,
+      "price": null,
+      "stock": null,
+      "notes": "Use 3.3V, not the module's allowed 5V, to keep its rail-to-rail output within the Pico ADC domain. Relative RMS measurement only; no SPL calibration or reliable disconnect diagnosis."
+    },
+    {
+      "id": "motor_driver",
+      "name": "Pololu DRV8833 Dual Motor Driver Carrier",
+      "sku": "2130",
+      "quantity": 1,
+      "source": "https://www.pololu.com/product/2130",
+      "observedRatings": { "motorSupplyRangeV": [2.7, 10.8], "continuousCurrentAPerChannel": 1.2, "peakCurrentAPerChannel": 2, "compatibleLogicV": [3, 5] },
+      "verifiedSilkscreen": { "sleep": "SLP", "fault": "FLT", "power": "VIN", "motorA": ["AOUT1", "AOUT2"], "motorB": ["BOUT1", "BOUT2"], "inputs": ["AIN1", "AIN2", "BIN1", "BIN2"] },
+      "dimensionsMm": null,
+      "mountingPattern": null,
+      "price": null,
+      "stock": null,
+      "notes": "Continuous rating is thermally dependent; peak is not continuous. Board SLP is pulled high. Inputs have internal pull-downs. FLT is open-drain, active low. Current limiting is disabled by the default carrier configuration."
+    },
+    {
+      "id": "drive_motor",
+      "name": "Pololu 100:1 Micro Metal Gearmotor LP 6V",
+      "sku": "992",
+      "quantity": 2,
+      "source": "https://www.pololu.com/product/992",
+      "observedRatings": { "ratedVoltageV": 6, "noLoadRPMAt6V": 130, "noLoadCurrentAAt6V": 0.04, "theoreticalStallCurrentAAt6V": 0.36, "theoreticalStallTorqueKgfCmAt6V": 0.74, "nominalOutputShaftDiameterMm": 3 },
+      "usableContinuousTorqueNm": null,
+      "dimensionsMm": null,
+      "mountingPattern": null,
+      "price": null,
+      "stock": null,
+      "notes": "Candidate only. Stall values are theoretical, not usable continuous torque. Operating at a different pack voltage requires new characterization. No physical mass, gear efficiency, load curve, wheel interface or bracket fit has been confirmed."
+    },
+    {
+      "id": "motor_power",
+      "name": "Separately fused and switched low-voltage motor supply; chemistry and exact SKU pending",
+      "quantity": 1,
+      "source": null,
+      "proposedNominalV": 4.8,
+      "basis": "ASSUMED_DESIGN_OPTION_NOT_SELECTED",
+      "maximumChargedVoltageV": null,
+      "continuousCurrentA": null,
+      "dimensionsMm": null,
+      "price": null,
+      "notes": "A preassembled 4-cell NiMH holder/pack is one option, not a mandate or proven selection. Verify maximum voltage, current, polarity, fuse, holder and switch ratings first. No lithium charging circuitry is supplied. Do not join motor VIN to Pico 3V3/VSYS/VBUS."
+    }
+  ],
+  "additionalRequiredItems": [
+    "Compatible wheels/hubs plus caster or equivalent passive support; shaft fit unresolved",
+    "Motor mounts, board mounts, fasteners and strain relief matched to measured components",
+    "Normally-open ARM button and normally-closed STOP sensing loop",
+    "Independent accessible DC-rated motor-power disconnect and appropriate fuse",
+    "Properly rated wire/connectors, insulated secure terminals and common ground",
+    "USB logic supply for Pico during bench commissioning"
+  ],
+  "releaseBlockers": [
+    "Dimensions/mounting interfaces measured or read from exact revision drawings",
+    "Actual power-source maximum voltage, fuse, switch/wire ratings and motor current budget selected",
+    "Usable torque, traction, temperature and motor direction observed on bench",
+    "Physical stop distance and watchdog/fault behavior tested",
+    "Microphone motor-self-noise feedback excluded through a negative-control test",
+    "Physical toy age/small-parts and moving-part hazards reviewed"
+  ]
+}

@@ -1,0 +1,44 @@
+name: Source checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      OLLAMA_URL: ''
+      QWEN_MODEL: ''
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked JavaScript dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Syntax, imports, source regressions and typed frontend build
+        run: npm run check:source
+      - name: Source archive and offline restoration contract tests
+        run: python -B tests/submission_package_test.py
+      - name: Install fixture browser
+        run: npx playwright install --with-deps chromium
+      - name: Vue workflow, electrical and WebGL browser regressions
+        run: npm run test:e2e
+      # Native CAD, real Qwen inference and physical builds are separate tests.
+      # CI never downloads model weights, supplier CAD or contacts a printer.

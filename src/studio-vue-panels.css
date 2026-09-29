@@ -1,0 +1,25 @@
+/* All runtime assets are local. Detail panels inherit the studio dark theme. */
+[hidden] {
+  display: none !important;
+}
+.loading-text {
+  color: #91a9c7;
+  font-size: 12px;
+}
+
+.mobile-right-close {
+  display: none;
+}
+@media (max-width: 800px) {
+  .mobile-right-close {
+    display: flex;
+    position: absolute;
+    z-index: 8;
+    top: 3px;
+    right: 5px;
+    background: #2b3039;
+  }
+  .right-panels .panel-heading {
+    padding-right: 40px;
+  }
+}

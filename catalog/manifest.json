@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "catalogRevision": "submission-empty-requires-explicit-source-restore",
+  "components": [],
+  "materials": [],
+  "kits": [],
+  "runtimeNetworkRequired": false,
+  "limitations": [
+    "Third-party source CAD is not redistributed. Run the reviewed setup acquisition/verification before selecting source kits."
+  ]
+}

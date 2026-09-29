@@ -1,0 +1,256 @@
+{
+  "schemaVersion": 1,
+  "scope": "Historical official-source hashes; asset bytes deliberately excluded.",
+  "sources": [
+    {
+      "name": "adafruit-1063-license.txt",
+      "path": "sources/adafruit-1063-license.txt",
+      "url": "https://raw.githubusercontent.com/adafruit/Adafruit-MAX4466-Electret-Mic-Amplifier-PCBs/04f6f23f995a4a0c8b944c07b2d74d602898c528/license.txt",
+      "finalUrl": "https://raw.githubusercontent.com/adafruit/Adafruit-MAX4466-Electret-Mic-Amplifier-PCBs/04f6f23f995a4a0c8b944c07b2d74d602898c528/license.txt",
+      "role": "upstream design license",
+      "bytes": 22597,
+      "sha256": "1f63e1f4676a433423b2c2ff1ccd9e80093f341f10b81f0ac0106342bc7bbe89",
+      "capturedAt": "2026-09-27T03:57:27.337577+00:00"
+    },
+    {
+      "name": "adafruit-1063-product.html",
+      "path": "sources/adafruit-1063-product.html",
+      "url": "https://www.adafruit.com/product/1063",
+      "finalUrl": "https://www.adafruit.com/product/1063",
+      "role": "manufacturer product and height specification",
+      "bytes": 94195,
+      "sha256": "6dee62e9e7aee6b4e80de83bd50d76104eadd089cb2d926f612a4fa45b722e6f",
+      "capturedAt": "2026-09-27T03:58:15.727952+00:00"
+    },
+    {
+      "name": "adafruit-1063-readme.md",
+      "path": "sources/adafruit-1063-readme.md",
+      "url": "https://raw.githubusercontent.com/adafruit/Adafruit-MAX4466-Electret-Mic-Amplifier-PCBs/04f6f23f995a4a0c8b944c07b2d74d602898c528/README.md",
+      "finalUrl": "https://raw.githubusercontent.com/adafruit/Adafruit-MAX4466-Electret-Mic-Amplifier-PCBs/04f6f23f995a4a0c8b944c07b2d74d602898c528/README.md",
+      "role": "upstream attribution and design description",
+      "bytes": 1863,
+      "sha256": "1df0b61dddff82068b11ca8c5d609b18189209e898eab1a3e599d9eee8bb2d57",
+      "capturedAt": "2026-09-27T04:00:31.992603+00:00"
+    },
+    {
+      "name": "adafruit-1063.brd",
+      "path": "sources/adafruit-1063.brd",
+      "url": "https://raw.githubusercontent.com/adafruit/Adafruit-MAX4466-Electret-Mic-Amplifier-PCBs/04f6f23f995a4a0c8b944c07b2d74d602898c528/Adafruit%20MAX4466%20Mic%20Amp.brd",
+      "finalUrl": "https://raw.githubusercontent.com/adafruit/Adafruit-MAX4466-Electret-Mic-Amplifier-PCBs/04f6f23f995a4a0c8b944c07b2d74d602898c528/Adafruit%20MAX4466%20Mic%20Amp.brd",
+      "role": "manufacturer Eagle board source",
+      "bytes": 135699,
+      "sha256": "227be8cd74544c4b2c4ab8508931ec2b849cdebf56dfcb59ea1f73af5f2268c9",
+      "capturedAt": "2026-09-27T03:58:13.760097+00:00"
+    },
+    {
+      "name": "adafruit-1063.sch",
+      "path": "sources/adafruit-1063.sch",
+      "url": "https://raw.githubusercontent.com/adafruit/Adafruit-MAX4466-Electret-Mic-Amplifier-PCBs/04f6f23f995a4a0c8b944c07b2d74d602898c528/Adafruit%20MAX4466%20Mic%20Amp.sch",
+      "finalUrl": "https://raw.githubusercontent.com/adafruit/Adafruit-MAX4466-Electret-Mic-Amplifier-PCBs/04f6f23f995a4a0c8b944c07b2d74d602898c528/Adafruit%20MAX4466%20Mic%20Amp.sch",
+      "role": "manufacturer Eagle schematic source",
+      "bytes": 321904,
+      "sha256": "70ae137d59d8a0ed4c7fba35df5549f882f9fdc4a5460ace345c0b8b7bceea20",
+      "capturedAt": "2026-09-27T03:58:14.108798+00:00"
+    },
+    {
+      "name": "pico-product-brief.pdf",
+      "path": "sources/pico-product-brief.pdf",
+      "url": "https://pip-assets.raspberrypi.com/categories/610-raspberry-pi-pico/documents/RP-008308-DS-1-pico-product-brief.pdf",
+      "finalUrl": "https://pip-assets.raspberrypi.com/categories/610-raspberry-pi-pico/documents/RP-008308-DS-1-pico-product-brief.pdf",
+      "role": "manufacturer dimensional drawing, RP-008308-DS-1",
+      "bytes": 631165,
+      "sha256": "39ec4bf8bacf76d993bd1f6de9d1b32bf40ff3ebf972c76dce6235fc16d00b60",
+      "capturedAt": "2026-09-27T04:02:38.539597+00:00"
+    },
+    {
+      "name": "pico-resources.html",
+      "path": "sources/pico-resources.html",
+      "url": "https://pip.raspberrypi.com/categories/610-raspberry-pi-pico",
+      "finalUrl": "https://pip.raspberrypi.com/categories/610-raspberry-pi-pico",
+      "role": "manufacturer revisioned resource index",
+      "bytes": 48237,
+      "sha256": "0d55553ef3c44039dcbbe72e3da5e5d8b2210eaeec7cd2d0e4a846c6cf63e131",
+      "capturedAt": "2026-09-27T04:02:37.986402+00:00"
+    },
+    {
+      "name": "pico-step.zip",
+      "path": "sources/pico-step.zip",
+      "url": "https://pip-assets.raspberrypi.com/categories/610-raspberry-pi-pico/documents/RP-008311-DS-1-Pico-R3-step.zip",
+      "finalUrl": "https://pip-assets.raspberrypi.com/categories/610-raspberry-pi-pico/documents/RP-008311-DS-1-Pico-R3-step.zip",
+      "role": "manufacturer STEP archive, Pico R3",
+      "bytes": 266009,
+      "sha256": "4008e557bd80d75119872d10460d9f30f2e0faf210606d058bbe78cd6598c931",
+      "capturedAt": "2026-09-27T03:57:05.657049+00:00"
+    },
+    {
+      "name": "pololu-1086-product.html",
+      "path": "sources/pololu-1086-product.html",
+      "url": "https://www.pololu.com/product/1086",
+      "finalUrl": "https://www.pololu.com/product/1086",
+      "role": "manufacturer #1086 bracket and hardware specifications",
+      "bytes": 49142,
+      "sha256": "11f769ae7e8cb0992ef9a6cdec1e9564e499bf7b871e76878cd03da43c37d41b",
+      "capturedAt": "2026-09-27T04:13:16.948594+00:00"
+    },
+    {
+      "name": "pololu-1086.step",
+      "path": "sources/pololu-1086.step",
+      "url": "https://www.pololu.com/file/0J1723/micro-metal-gearmotor-bracket.step",
+      "finalUrl": "https://www.pololu.com/file/0J1723/micro-metal-gearmotor-bracket.step",
+      "role": "manufacturer #1086 standalone bracket STEP",
+      "bytes": 3756286,
+      "sha256": "87f0be95abde4d475c5a435a4b388f43000ad0a6ed518e31cdf7379b4d255881",
+      "capturedAt": "2026-09-27T04:13:25.698589+00:00"
+    },
+    {
+      "name": "pololu-1098-product.html",
+      "path": "sources/pololu-1098-product.html",
+      "url": "https://www.pololu.com/product/1098",
+      "finalUrl": "https://www.pololu.com/product/1098",
+      "role": "manufacturer #1098 50:1 LP6V specifications",
+      "bytes": 137452,
+      "sha256": "4f72df3bc0cfcad4fcbd82d4d358397a05d9a7a11058695d642ca9989107ae33",
+      "capturedAt": "2026-09-27T03:57:25.268084+00:00"
+    },
+    {
+      "name": "pololu-1420-product.html",
+      "path": "sources/pololu-1420-product.html",
+      "url": "https://www.pololu.com/product/1420",
+      "finalUrl": "https://www.pololu.com/product/1420",
+      "role": "manufacturer #1420 wheel, 3 mm D-shaft compatibility",
+      "bytes": 70151,
+      "sha256": "0c36c423f8bd48970dd72454ba1f601e172c3197071408c2eea18b31e5fa8d29",
+      "capturedAt": "2026-09-27T04:13:19.368424+00:00"
+    },
+    {
+      "name": "pololu-1420-step.zip",
+      "path": "sources/pololu-1420-step.zip",
+      "url": "https://www.pololu.com/file/0J1292/pololu-wheel-60%C3%978mm.zip",
+      "finalUrl": "https://www.pololu.com/file/0J1292/pololu-wheel-60%C3%978mm.zip",
+      "role": "manufacturer 60x8 mm wheel family STEP archive",
+      "bytes": 2949851,
+      "sha256": "491052efecfba727d0ad459aafd2b2b54926bbdf0bd0960f036cb21710f0bf71",
+      "capturedAt": "2026-09-27T04:13:24.438319+00:00"
+    },
+    {
+      "name": "pololu-2130-dimensions.pdf",
+      "path": "sources/pololu-2130-dimensions.pdf",
+      "url": "https://www.pololu.com/file/0J1615/drv8833-dual-motor-driver-carrier-dimensions.pdf",
+      "finalUrl": "https://www.pololu.com/file/0J1615/drv8833-dual-motor-driver-carrier-dimensions.pdf",
+      "role": "manufacturer drawing, md17a, 2018-10-26",
+      "bytes": 208022,
+      "sha256": "015a9e5a8e6e3bba7335ebd850a34b76d58a6a6ff4a5f66bf43742bcb4c6b29e",
+      "capturedAt": "2026-09-27T03:57:10.552675+00:00"
+    },
+    {
+      "name": "pololu-2130-drill.dxf",
+      "path": "sources/pololu-2130-drill.dxf",
+      "url": "https://www.pololu.com/file/0J990/md17a-drill.dxf",
+      "finalUrl": "https://www.pololu.com/file/0J990/md17a-drill.dxf",
+      "role": "manufacturer hole-coordinate drawing",
+      "bytes": 31152,
+      "sha256": "7d0f3606e5559533308089f4b2bbd24167b4afe946ecd84605ca48a38f39f0e2",
+      "capturedAt": "2026-09-27T03:57:12.252502+00:00"
+    },
+    {
+      "name": "pololu-2130-product.html",
+      "path": "sources/pololu-2130-product.html",
+      "url": "https://www.pololu.com/product/2130",
+      "finalUrl": "https://www.pololu.com/product/2130",
+      "role": "manufacturer product specifications",
+      "bytes": 68095,
+      "sha256": "28adbe94b40fdc2d389eb7afdba1c24706e6c48b9d6ac6ba1648ef7abe402d96",
+      "capturedAt": "2026-09-27T03:57:16.636913+00:00"
+    },
+    {
+      "name": "pololu-2130.step",
+      "path": "sources/pololu-2130.step",
+      "url": "https://www.pololu.com/file/0J1616/drv8833-dual-motor-driver-carrier-step.step",
+      "finalUrl": "https://www.pololu.com/file/0J1616/drv8833-dual-motor-driver-carrier-step.step",
+      "role": "manufacturer STEP, md17a carrier",
+      "bytes": 2938038,
+      "sha256": "90960797d0f972d87bd07ec43d6adeec8bd4145686464896cd7f93a45d6bd70a",
+      "capturedAt": "2026-09-27T03:57:13.836760+00:00"
+    },
+    {
+      "name": "pololu-950-dimensions.pdf",
+      "path": "sources/pololu-950-dimensions.pdf",
+      "url": "https://www.pololu.com/file/0J1636/pololu-ball-caster-with-0-375in-ball.pdf",
+      "finalUrl": "https://www.pololu.com/file/0J1636/pololu-ball-caster-with-0-375in-ball.pdf",
+      "role": "manufacturer 3/8 inch ball caster dimensional drawing",
+      "bytes": 164301,
+      "sha256": "8c2b8159fbc16246b6469c83d89d31eb6aa87890ee4794c3a6100273ee02a238",
+      "capturedAt": "2026-09-27T04:13:27.504328+00:00"
+    },
+    {
+      "name": "pololu-950-product.html",
+      "path": "sources/pololu-950-product.html",
+      "url": "https://www.pololu.com/product/950",
+      "finalUrl": "https://www.pololu.com/product/950",
+      "role": "manufacturer #950 caster and hardware specifications",
+      "bytes": 47485,
+      "sha256": "bdecd2b3388eb01b19d190ec75b1f19a049372d15e4b4d28eb342ef16786eff7",
+      "capturedAt": "2026-09-27T04:13:27.203387+00:00"
+    },
+    {
+      "name": "pololu-950.step",
+      "path": "sources/pololu-950.step",
+      "url": "https://www.pololu.com/file/0J1637/pololu-ball-caster-with-0-375in-ball.step",
+      "finalUrl": "https://www.pololu.com/file/0J1637/pololu-ball-caster-with-0-375in-ball.step",
+      "role": "manufacturer #950 caster STEP",
+      "bytes": 2266986,
+      "sha256": "859916355cb72f3a018573e6979bdb4892d103816774da0d846ffe501fe42fd8",
+      "capturedAt": "2026-09-27T04:13:25.851298+00:00"
+    },
+    {
+      "name": "pololu-992-product.html",
+      "path": "sources/pololu-992-product.html",
+      "url": "https://www.pololu.com/product/992",
+      "finalUrl": "https://www.pololu.com/product/992",
+      "role": "manufacturer #992 100:1 LP6V specifications",
+      "bytes": 137424,
+      "sha256": "baed1d3c9c45b0f246cd076d8ca60fefe0d0b666be5df54f374c300805fd0575",
+      "capturedAt": "2026-09-27T03:57:25.329940+00:00"
+    },
+    {
+      "name": "pololu-micro-motors-datasheet.pdf",
+      "path": "sources/pololu-micro-motors-datasheet.pdf",
+      "url": "https://www.pololu.com/file/0J1487/pololu-micro-metal-gearmotors-rev-6-2.pdf",
+      "finalUrl": "https://www.pololu.com/file/0J1487/pololu-micro-metal-gearmotors-rev-6-2.pdf",
+      "role": "manufacturer motor family performance datasheet revision 6.2",
+      "bytes": 5261132,
+      "sha256": "fb949beb58a92c4dff4d6e1849c8989761ddabe3a3224075755ad71561520ed0",
+      "capturedAt": "2026-09-27T03:57:26.477506+00:00"
+    },
+    {
+      "name": "pololu-micro-motors-dimensions.pdf",
+      "path": "sources/pololu-micro-motors-dimensions.pdf",
+      "url": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf",
+      "finalUrl": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf",
+      "role": "manufacturer dimensional drawing family, 2024-04-03",
+      "bytes": 634780,
+      "sha256": "d2b24afa17b1bd6fa901c5429e51003eb0a771f72da32cf6ff9ff49f760d786f",
+      "capturedAt": "2026-09-27T03:57:17.650432+00:00"
+    },
+    {
+      "name": "pololu-micro-motors-step.zip",
+      "path": "sources/pololu-micro-motors-step.zip",
+      "url": "https://www.pololu.com/file/0J2042/Pololu%20Micro%20Metal%20Gearmotor%203D%20(STEP)%20Models.zip",
+      "finalUrl": "https://www.pololu.com/file/0J2042/Pololu%20Micro%20Metal%20Gearmotor%203D%20(STEP)%20Models.zip",
+      "role": "manufacturer motor family STEP archive; variant selection required",
+      "bytes": 59981034,
+      "sha256": "eeafd5682d7a2c7deed7c7c7e24719eeb36761706aca4a1c5c815c07c36cbb55",
+      "capturedAt": "2026-09-27T03:58:16.826258+00:00"
+    },
+    {
+      "name": "pololu-wheel-dimensions.pdf",
+      "path": "sources/pololu-wheel-dimensions.pdf",
+      "url": "https://www.pololu.com/file/0J1708/pololu-wheel-dimensions.pdf",
+      "finalUrl": "https://www.pololu.com/file/0J1708/pololu-wheel-dimensions.pdf",
+      "role": "manufacturer wheel drawing, 60x8 mm page 3, 2019-09-12",
+      "bytes": 1829573,
+      "sha256": "08eb3e501bdc41329dc299361dba27a9835f1fb9dbdd0f806ba637fcecc7f9cd",
+      "capturedAt": "2026-09-27T04:13:21.629840+00:00"
+    }
+  ]
+}
