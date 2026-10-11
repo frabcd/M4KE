@@ -282,12 +282,12 @@ async function apiFixture(options={}){
       return {code:checks.length?2:0,stdout:'Synthetic test runner, not native evidence',stderr:''};
     };
   }
-  const handle=createStudioService({root,runProcess,getSettings:()=>({endpoint:'http://127.0.0.1:11434',model:'fixture-local',provider:options.provider||'ollama'}),getModels:async()=>[{name:'fixture-local',digest:'fixture-only'}],localFetch:async(...args)=>{const payload=JSON.parse(args[2].body);calls.push(payload);return {message:{content:JSON.stringify(options.reply?options.reply(payload,calls.length):payload.format.properties.action?{action:'patch',message:'I propose widening the selected shell by two mm.',updates:[{partId:'shell',reason:'Requested extra width; fit is unverified.',changes:{shape:candidate().parts[0].shape,explanation:candidate().parts[0].explanation}}],questions:[]}:payload.format.properties.message?{message:'The selected shell protects the mechanism; placement is untested.'}:payload.messages[0].content.startsWith('REFINEMENT')?candidate():{...sample(),parts:sample().parts.map(p=>({...p,explanation:{purpose:'Shell',placementReason:'Assumed placement',selectionReason:'Prototype material'}}))})},eval_count:20,done_reason:'stop'};},body:async req=>{let bytes='';for await(const chunk of req)bytes+=chunk;return JSON.parse(bytes);},json:(res,status,data)=>{res.writeHead(status,{'content-type':'application/json'});res.end(JSON.stringify(data));}});
+  const handle=createStudioService({root,runProcess,supplierFetch:options.supplierFetch,getSettings:()=>({endpoint:'http://127.0.0.1:11434',model:'fixture-local',provider:options.provider||'ollama'}),getModels:async()=>[{name:'fixture-local',digest:'fixture-only'}],localFetch:async(...args)=>{const payload=JSON.parse(args[2].body);calls.push(payload);return {message:{content:JSON.stringify(options.reply?options.reply(payload,calls.length):payload.format.properties.action?{action:'patch',message:'I propose widening the selected shell by two mm.',updates:[{partId:'shell',reason:'Requested extra width; fit is unverified.',changes:{shape:candidate().parts[0].shape,explanation:candidate().parts[0].explanation}}],questions:[]}:payload.format.properties.message?{message:'The selected shell protects the mechanism; placement is untested.'}:payload.messages[0].content.startsWith('REFINEMENT')?candidate():{...sample(),parts:sample().parts.map(p=>({...p,explanation:{purpose:'Shell',placementReason:'Assumed placement',selectionReason:'Prototype material'}}))})},eval_count:20,done_reason:'stop'};},body:async req=>{let bytes='';for await(const chunk of req)bytes+=chunk;return JSON.parse(bytes);},json:(res,status,data)=>{res.writeHead(status,{'content-type':'application/json'});res.end(JSON.stringify(data));}});
   const server=http.createServer(async(req,res)=>{try{if(!await handle(req,res,new URL(req.url,'http://localhost').pathname)){res.writeHead(404);res.end('{}');}}catch(e){res.writeHead(e.status||500,{'content-type':'application/json'});res.end(JSON.stringify({error:e.message}));}});
   await new Promise(r=>server.listen(0,'127.0.0.1',r));const url=`http://127.0.0.1:${server.address().port}`;
   return {root,calls,url,close:async()=>{await new Promise(r=>server.close(r));await rm(root,{recursive:true,force:true});}};
 }
-async function settled(url){for(let i=0;i<300;i++){const p=(await request(url)).data;if(p.workflow?.status!=='running')return p;await new Promise(r=>setTimeout(r,10));}throw new Error('Workflow did not finish');}
+async function settled(url,attempts=300){for(let i=0;i<attempts;i++){const p=(await request(url)).data;if(p.workflow?.status!=='running')return p;await new Promise(r=>setTimeout(r,10));}throw new Error('Workflow did not finish');}
 
 test('HTTP brief assistant receives saved requirements and dialogue, never a stale specification',async()=>{
   const f=await apiFixture();try{
@@ -475,5 +475,60 @@ test('online refinement uses one designer call and has no nonexistent compact ro
     const p=(await request(f.url+'/api/studio/projects',{request:'A shell',spec:sample()})).data,url=f.url+'/api/studio/projects/'+p.id;
     const reply=await request(url+'/assistant',{...requestFor(p),mode:'propose',message:'Widen two mm'});assert.equal(reply.status,200,JSON.stringify(reply.data));assert.equal(f.calls.length,1);assert.equal(reply.data.proposal.nativeChecksPassed,true);assert.equal(reply.data.proposal.metrics.refinementRouteRunId,undefined);
     assert((f.calls[0].format.properties.parts.items.anyOf?.[0]||f.calls[0].format.properties.parts.items).required.includes('explanation'));
+  }finally{await f.close();}
+});
+
+
+test('design workflow automatically prices its generated BOM and invalidates prices after edits',async t=>{
+  const previous=process.env.M4KE_ALLOW_WEB;process.env.M4KE_ALLOW_WEB='1';
+  t.after(()=>{if(previous===undefined)delete process.env.M4KE_ALLOW_WEB;else process.env.M4KE_ALLOW_WEB=previous;});
+  const spec=candidate();spec.title='Clock';spec.parts.push({...structuredClone(spec.parts[0]),id:'rtc',name:'DFR0641',kind:'purchased',material:'Purchased RTC module',position:[0,0,20]});spec.assembly[0].partIds.push('rtc');
+  const queried=[];
+  const f=await apiFixture({reply:()=>spec,supplierFetch:async url=>{queried.push(url);return url.includes('search.php')?'<a href="goods-2646.html">RTC</a>':'<h1>Clock module</h1><div class="content2">DFR0641</div><font id="ECS_SHOPPRICE">￥49.00</font>';}});
+  try{
+    const p=(await request(f.url+'/api/studio/projects',{request:'Create a clock'})).data,url=f.url+'/api/studio/projects/'+p.id;
+    await request(url+'/run',{mode:'design',expectedRevision:p.revision});const done=await settled(url);
+    assert.equal(done.workflow.status,'draft',done.workflow.message);assert.equal(done.priceSearch.designHash,done.designHash);
+    assert.equal(done.priceSearch.lines.length,1);assert.equal(done.priceSearch.lines[0].partId,'rtc');assert.equal(done.priceSearch.lines[0].offers[0].amount,'49.00');assert.equal(queried.length,2);
+    assert.equal(done.priceSearch.total,null);assert.equal(f.calls.length,1);
+    const reopened=(await request(url)).data;assert.deepEqual(reopened.priceSearch,done.priceSearch);
+    const next=structuredClone(done.spec);next.parts[1].name='Different RTC';
+    const edited=await request(url,{spec:next,expectedRevision:done.revision},'PUT');assert.equal(edited.status,200);assert.equal(edited.data.priceSearch,undefined);
+  }finally{await f.close();}
+});
+
+
+test('delivery automatically prices build items and keeps unavailable sources advisory',async t=>{
+  const old=process.env.M4KE_ALLOW_WEB;process.env.M4KE_ALLOW_WEB='1';t.after(()=>{if(old===undefined)delete process.env.M4KE_ALLOW_WEB;else process.env.M4KE_ALLOW_WEB=old;});
+  const spec=candidate();spec.buildItems=[{id:'screws',name:'M3 screws',kind:'fastener',quantity:4,unit:'piece',specification:'M3; length needs confirmation',source:'Synthetic test requirement',partIds:['shell']}];
+  let calls=0;const f=await apiFixture({native:true,provider:'codex-bridge',reply:()=>spec,supplierFetch:async()=>{calls++;throw Error('Supplier unavailable');}});
+  try{
+    const p=(await request(f.url+'/api/studio/projects',{request:'Create a shell'})).data,url=f.url+'/api/studio/projects/'+p.id;
+    await request(url+'/run',{mode:'deliver',expectedRevision:p.revision});const done=await settled(url);
+    assert.equal(done.workflow.status,'complete',done.workflow.message);assert.equal(done.priceSearch.designHash,done.designHash);assert.equal(done.priceSearch.status,'PRICE_GAPS');assert.equal(done.priceSearch.lines[0].quantity,4);assert.equal(done.priceSearch.lines[0].offers.length,0);assert.equal(calls,1);assert(done.jobId);
+  }finally{await f.close();}
+});
+
+test('accepted refinement prices the new revision; unaccepted proposals do not',async()=>{
+  const root=await mkdtemp(path.join(tmpdir(),'m4ke-price-refinement-'));let calls=0;
+  const store=createProjectStore({root,assistant:async()=>({message:'A wider shell',spec:candidate()}),priceDesign:async spec=>{calls++;return {designHash:designHash(spec),automatic:true,lines:[],status:'NO_PURCHASED_ITEMS',total:null,completeQuote:false};}});
+  try{
+    const p=await store.create({request:'Shell',spec:sample()});const proposal=(await store.assist(p.id,{...requestFor(p),mode:'propose',message:'Make it wider'})).proposal;
+    assert.equal(calls,0);const next=await store.applyProposal(p.id,proposal.id,{expectedRevision:p.revision,designHash:p.designHash});
+    assert.equal(calls,1);assert.equal(next.priceSearch.designHash,next.designHash);assert.notEqual(next.designHash,p.designHash);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+// Explicit opt-in: real public supplier transport with a synthetic model reply.
+// Tests the automatic connection, not model design quality or native CAD accuracy.
+test('live supplier prices attach automatically to a clock workflow',{skip:process.env.M4KE_TEST_LIVE_PRICES!=='1',timeout:120000},async t=>{
+  const old=process.env.M4KE_ALLOW_WEB;process.env.M4KE_ALLOW_WEB='1';t.after(()=>{if(old===undefined)delete process.env.M4KE_ALLOW_WEB;else process.env.M4KE_ALLOW_WEB=old;});
+  const spec=candidate();spec.parts.push({...structuredClone(spec.parts[0]),id:'rtc',name:'DFR0641',kind:'purchased',material:'Purchased RTC',position:[0,0,20]});spec.assembly[0].partIds.push('rtc');
+  const f=await apiFixture({reply:()=>spec});try{
+    const p=(await request(f.url+'/api/studio/projects',{request:'Create a clock'})).data,url=f.url+'/api/studio/projects/'+p.id;
+    await request(url+'/run',{mode:'design',expectedRevision:p.revision});const done=await settled(url,9000);
+    assert.equal(done.workflow.status,'draft',done.workflow.message);assert.equal(done.priceSearch.designHash,done.designHash);
+    const line=done.priceSearch.lines[0];assert(line.offers.some(o=>o.sku==='DFR0641'&&o.currency==='CNY'&&Number(o.amount)>0),JSON.stringify(line.issues));
+    console.log(JSON.stringify({liveSupplier:true,automatic:true,modelReply:'synthetic connection fixture',designHash:done.designHash,offers:line.offers.map(o=>({sku:o.sku,amount:o.amount,currency:o.currency,url:o.url})),retrievedAt:line.retrievedAt}));
   }finally{await f.close();}
 });

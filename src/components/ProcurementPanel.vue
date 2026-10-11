@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BomPriceSearch from './BomPriceSearch.vue';
 import { onMounted, ref } from "vue";
 import { useStudio } from "../studio/store";
 import { api, safeExternal } from "../studio/api";
@@ -190,6 +191,7 @@ onMounted(() => void refresh());
 </script>
 <template>
   <section class="procurement-panel">
+    <BomPriceSearch />
     <h3>
       {{
         s.t(

@@ -15,8 +15,8 @@ const sourceFixture = { skip: !existsSync(path.join(ROOT, 'procurement/snapshots
 async function emptyRoot(t) { const root = await mkdtemp(path.join(os.tmpdir(), 'm4ke-integration-')); t.after(() => rm(root, { recursive: true, force: true })); return root; }
 
 test('integration tools are limited to read-only local sourcing, not generic browser/PCB commands', () => {
-  assert.deepEqual(INTEGRATION_TOOLS.map(t => t.name), ['search_component_sources', 'search_model_library', 'get_model_source', 'get_static_collider', 'list_capabilities', 'search_cached_parts', 'quote_cached_part']);
-  for (const t of INTEGRATION_TOOLS) { assert.equal(t.annotations.readOnlyHint, true); assert.equal(t.annotations.openWorldHint, t.name==='search_component_sources'); assert.equal(t.inputSchema.additionalProperties, false); }
+  assert.deepEqual(INTEGRATION_TOOLS.map(t => t.name), ['search_bom_prices', 'search_component_sources', 'search_model_library', 'get_model_source', 'get_static_collider', 'list_capabilities', 'search_cached_parts', 'quote_cached_part']);
+  for (const t of INTEGRATION_TOOLS) { assert.equal(t.annotations.readOnlyHint, true); assert.equal(t.annotations.openWorldHint, ['search_component_sources','search_bom_prices'].includes(t.name)); assert.equal(t.inputSchema.additionalProperties, false); }
 });
 test('missing provider and missing snapshot are separate from working MCP transport', async t => {
   const runtime = createIntegrationRuntime({ root: await emptyRoot(t), now: () => NOW });
@@ -70,7 +70,7 @@ test('MCP dispatch supports initialization, discovery, call failures and notific
   const runtime = createIntegrationRuntime({ root: await emptyRoot(t) });
   const rpc = (method, params = {}) => dispatchIntegrationRpc({ jsonrpc: '2.0', id: 1, method, params }, runtime);
   assert.equal((await rpc('initialize')).result.serverInfo.name, 'm4ke-offline-sourcing');
-  assert.equal((await rpc('tools/list')).result.tools.length, 7);
+  assert.equal((await rpc('tools/list')).result.tools.length, 8);
   const result = await rpc('tools/call', { name: 'search_cached_parts', arguments: {} });
   assert.equal(result.result.isError, false); assert.equal(JSON.parse(result.result.content[0].text).status, 'PINNED_SNAPSHOT_UNAVAILABLE');
   assert.equal((await rpc('tools/call', { name: 'eval', arguments: {} })).result.isError, true);
@@ -82,7 +82,7 @@ test('real stdio subprocess emits only JSON-RPC and rejects oversized requests',
   const input = [{ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05' } }, { jsonrpc: '2.0', method: 'notifications/initialized' }, { jsonrpc: '2.0', id: 2, method: 'tools/list' }].map(JSON.stringify).join('\n') + '\n';
   const child = spawnSync(process.execPath, [script, '--stdio'], { input, encoding: 'utf8', timeout: 5000 });
   assert.equal(child.status, 0); assert.equal(child.stderr, ''); const lines = child.stdout.trim().split('\n').map(JSON.parse);
-  assert.equal(lines.length, 2); assert.equal(lines[1].result.tools.length, 7);
+  assert.equal(lines.length, 2); assert.equal(lines[1].result.tools.length, 8);
   const oversized = spawnSync(process.execPath, [script, '--stdio'], { input: 'x'.repeat(65537), encoding: 'utf8', timeout: 5000 });
   assert.equal(oversized.status, 1); assert.equal(oversized.stdout, ''); assert.ok(oversized.stderr.includes('oversized'));
 });

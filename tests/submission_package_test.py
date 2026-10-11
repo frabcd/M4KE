@@ -112,6 +112,8 @@ class PackageTests(unittest.TestCase):
         self.assertTrue(module.check.scan_bytes('README.md', ('https://sample-only' + '.vicp.fun').encode()))
         self.assertTrue(module.check.scan_bytes('.env.example', b'QWEN_MODEL=private-model'))
         self.assertTrue(module.check.scan_bytes('.env.example', b'M4KE_ALLOW_WEB=1'))
+        self.assertFalse(module.check.scan_bytes('.env.example', b'M4KE_PRICE_PROXY_URL=\n'))
+        self.assertTrue(module.check.scan_bytes('.env.example', b'M4KE_PRICE_PROXY_URL=http://127.0.0.1:8080'))
         self.assertFalse(module.check.scan_bytes('.env.example', b'M4KE_ALLOW_WEB=\nM4KE_SEARCH_URL=\nM4KE_SEARCH_ENGINES=\n'))
         self.assertFalse(module.check.scan_bytes('.env.example', b'OLLAMA_URL=\nQWEN_MODEL=\nPORT=4173\n'))
 

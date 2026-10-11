@@ -24,6 +24,7 @@ import {createPrinterService} from './studio-printer.mjs';
 import {createProcurementService,resolveProcurementSnapshot} from './studio-procurement.mjs';
 import {createIntegrationsService,createIntegrationRuntime} from './studio-integrations.mjs';
 import {createWebResearch,modelResearch} from './studio-web-research.mjs';
+import {createLivePrices} from './studio-live-prices.mjs';
 import {generateIllustrations} from './studio-illustrations.mjs';
 import {sendArtifact} from './studio-http.mjs';
 import {runAdvisoryReview} from './studio-review.mjs';
@@ -111,16 +112,21 @@ export function tutorialHTML(spec,verification,hash,images={},electrical=null) {
   return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escape(spec.title)} — build guide</title><style>body{font:16px/1.65 system-ui;max-width:850px;margin:36px auto;padding:0 24px;color:#182338;overflow-wrap:anywhere}section{border-top:1px solid #ccd4df;padding:20px 0}.warning{background:#fff4d8;padding:20px}code{overflow-wrap:anywhere}table{border-collapse:collapse;width:100%;table-layout:fixed}td,th{text-align:left;vertical-align:top;padding:8px;border-bottom:1px solid #ddd}</style><h1>${escape(spec.title)}</h1><p>${escape(spec.description)}</p><p>Revision <code>${escape(hash)}</code> · units: millimetres</p><div class="warning"><strong>${escape(verification.overall)} — physical operation is UNKNOWN.</strong><p>This guide is generated design guidance, not a record of assembly or physical validation. Verify purchased-part dimensions and electrical ratings before fabrication or power. Keep batteries disconnected during assembly. Do not use preview geometry as evidence of component fit.</p></div><h2>Requirements</h2><ul>${spec.requirements.map(r=>`<li>${escape(r.id)}: ${escape(r.text)}</li>`).join('')}</ul><h2>Assumptions and missing evidence</h2><ul>${[...spec.assumptions,...spec.unknowns,...verification.limitations].map(escape).map(t=>`<li>${t}</li>`).join('')}</ul><h2>Evidence</h2><table><tr><th>Claim</th><th>Status</th><th>Method / scope</th></tr>${verification.claims.map(c=>`<tr><td>${escape(c.label)}</td><td>${escape(c.status)}</td><td>${escape(c.method)}<br>${escape(typeof c.details==='string'?c.details:JSON.stringify(c.details))}</td></tr>`).join('')}</table>${steps}${wiring}<h2>Print handoff</h2><ol><li>Select your actual printer, nozzle, build plate and filament in Bambu Studio or another slicer. No printer is selected by this package.</li><li>Import only printed-part STL files as separate objects, or inspect the STEP assembly. Purchased-part envelopes must not be printed as substitutes for real components.</li><li>Check scale (mm), orientation, interfaces, wall thickness, supports and the entire sliced preview. A CAD export is not machine-ready G-code.</li><li>Approve the exact print job on your selected device. This package has not connected to or started any printer.</li></ol><h2>Physical acceptance record</h2><p>Record dimensions, fit, wiring checks and measured behavior against each requirement. For a sound car: test wheels raised first, verify stop/disarm and missing-signal behavior, then test on an unobstructed floor. Software PASS is not a physical PASS.</p></html>`;
 }
 
-export function createStudioService({root,getSettings,localFetch,getModels,body,json,runProcess:processRunner=runProcess}) {
+export function createStudioService({root,getSettings,localFetch,getModels,body,json,supplierFetch,runProcess:processRunner=runProcess}) {
   const jobsRoot=path.join(root,'data','studio-jobs');
   const python=process.env.M4KE_CAD_PYTHON || path.join(root,'.venv-cad',process.platform==='win32'?'Scripts/python.exe':'bin/python');
   const jobs=new Map(); let building=false,designing=false,packing=false,probeCache=null,inferenceTail=Promise.resolve();
-  const projects=createProjectStore({root,execute:runWorkflow,findJob,assistant:projectAssistant,prepareCandidate});
+  const projects=createProjectStore({root,execute:runWorkflow,findJob,assistant:projectAssistant,prepareCandidate,priceDesign});
   const printing=createPrintingService({root,python,runProcess:processRunner,findJob,checkedRead,body,json});
   const printer=createPrinterService({body,json});
   const snapshotSha256=resolveProcurementSnapshot();
   const procurement=createProcurementService({root,json,snapshotSha256});
   const integrations=createIntegrationsService({root,json,body,snapshotSha256}),sourcing=createIntegrationRuntime({root,snapshotSha256}),research=createWebResearch({root});
+  const livePrices=createLivePrices({root,research,...supplierFetch?{get:supplierFetch}:{}});
+  async function priceDesign(spec){
+    let catalog;try{catalog=await localCatalog();}catch{catalog={components:[]};}
+    return {...await livePrices.searchDesign(spec,catalog),designHash:designHash(spec)};
+  }
   async function localCatalog(){const catalog=await loadCatalog(root);catalog.kits=getDesignKitOptions(catalog);return catalog;}
   async function infer(...args){const prior=inferenceTail;let release;inferenceTail=new Promise(r=>{release=r;});await prior;try{return await localFetch(...args);}finally{release();}}
   async function probe(force=false) {

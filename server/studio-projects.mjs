@@ -21,14 +21,18 @@ function fields(input,creating=false){
 }
 
 /** DGX-authoritative documents; browser storage never serves as verification. */
-export function createProjectStore({root,execute,findJob,assistant,prepareCandidate}){
+export function createProjectStore({root,execute,findJob,assistant,prepareCandidate,priceDesign}){
   const folder=path.join(root,'data','studio-projects');
   const active=new Set(),locks=new Map();let workflowAdmission=false;
   const file=id=>{if(!UUID.test(id))throw fail('Invalid project ID.');return path.join(folder,id+'.json');};
   async function locked(id,work){const previous=locks.get(id)||Promise.resolve();let release;const current=new Promise(r=>release=r);locks.set(id,current);await previous;try{return await work();}finally{release();if(locks.get(id)===current)locks.delete(id);}}
   async function read(id){const name=file(id);let bytes;try{const st=await lstat(name);if(st.isSymbolicLink()||!st.isFile()||st.size>4*1024*1024)throw fail('Invalid project file.',409);bytes=await readFile(name,'utf8');}catch(e){if(e.code==='ENOENT')throw fail('Project not found.',404);throw e;}const p=JSON.parse(bytes);if(p.id!==id)throw fail('Project identity mismatch.',409);return p;}
-  async function write(p){await mkdir(folder,{recursive:true});p.updatedAt=new Date().toISOString();const target=file(p.id),tmp=target+'.'+randomUUID()+'.tmp';await writeFile(tmp,JSON.stringify(p,null,2));await rename(tmp,target);return structuredClone(p);}
+  async function write(p){if(p.priceSearch&&(p.requiresDesignUpdate||p.priceSearch.designHash!==p.designHash))delete p.priceSearch;await mkdir(folder,{recursive:true});p.updatedAt=new Date().toISOString();const target=file(p.id),tmp=target+'.'+randomUUID()+'.tmp';await writeFile(tmp,JSON.stringify(p,null,2));await rename(tmp,target);return structuredClone(p);}
   async function archiveWorkflow(p){if(!p.workflow)return;const dir=path.join(folder,p.id+'-runs');await mkdir(dir,{recursive:true});await writeFile(path.join(dir,p.workflow.id+'.json'),JSON.stringify({projectId:p.id,spec:p.spec,workflow:p.workflow,designHash:p.designHash},null,2));}
+  async function safePrices(spec){
+    try{return await priceDesign(structuredClone(spec));}
+    catch{return {automatic:true,designHash:designHash(spec),status:'SEARCH_UNAVAILABLE',lines:[],total:null,completeQuote:false,issues:['Automatic price lookup failed; retry in Procurement.']};}
+  }
   async function attachJob(p,id){if(!id)return;if(!findJob)throw fail('Job association is unavailable.',503);const j=await findJob(id);if(!p.spec||j.designHash!==designHash(p.spec))throw fail('Job does not match the project design.',409);p.jobId=id;}
   async function get(id){return locked(id,async()=>{const p=await read(id);if(p.workflow?.status==='running'&&!active.has(id)){p.workflow.status='error';p.workflow.stage='error';p.workflow.message='Server restarted during this workflow. Saved attempts remain available; explicitly rerun to continue.';p.workflow.finishedAt=new Date().toISOString();p.revision++;await write(p);}return structuredClone(p);});}
   async function create(input){const clean=fields(input,true),now=new Date().toISOString();const p={id:randomUUID(),request:'',answers:[],budget:'',...clean,revision:1,createdAt:now,updatedAt:now};if(p.spec)p.designHash=designHash(p.spec);await attachJob(p,clean.jobId);return write(p);}
@@ -49,7 +53,17 @@ export function createProjectStore({root,execute,findJob,assistant,prepareCandid
     try{p=await locked(id,async()=>{const current=await read(id);if(active.has(id))throw fail('Workflow already running.',409);if(input.expectedRevision!==undefined&&current.revision!==input.expectedRevision)throw fail('Project changed before the run started. Reload from DGX.',409);if(mode==='verify'&&current.requiresDesignUpdate)throw fail('The brief changed after this concept. Generate a new draft before verification.',409);if(mode==='verify'&&(!current.spec?.parts.length||current.spec.questions.length))throw fail('Verification requires a saved design without unanswered questions.',409);if(mode==='verify'&&designHash(current.spec)!==current.designHash)throw fail('Saved design identity is inconsistent.',409);await archiveWorkflow(current);Object.assign(current,clean);if(mode!=='verify'&&!current.request.trim()&&!input.kitId)throw fail('Describe the toy first.');const sourceJobId=current.jobId||null;for(const k of mode==='deliver'?[]:mode==='verify'?['jobId','verification']:['jobId','metrics','model','verification','designSource'])delete current[k];current.workflow={id:randomUUID(),mode,...mode==='verify'&&sourceJobId?{sourceJobId}:{},status:'running',stage:mode==='verify'||input.kitId?'calculations':'design',message:mode==='verify'?'Verifying the saved design without initial regeneration.':input.kitId?'Compiling the selected local source kit.':'The configured AI is reviewing the request and essential answers.',attempts:[],startedAt:new Date().toISOString(),repairLimit:1,...input.kitId?{kitId:input.kitId,parameters:input.parameters||{}}:{}};current.revision++;active.add(id);return write(current);});}
     catch(e){active.delete(id);workflowAdmission=false;throw e;}
     const workflowId=p.workflow.id;
-    const checkpoint=patch=>locked(id,async()=>{const latest=await read(id);if(latest.workflow?.id!==workflowId)throw fail('Workflow revision changed.',409);const {workflow,...rest}=patch;Object.assign(latest,rest);if(workflow)Object.assign(latest.workflow,workflow);latest.revision++;return write(latest);});
+    const persistCheckpoint=patch=>locked(id,async()=>{const latest=await read(id);if(latest.workflow?.id!==workflowId)throw fail('Workflow revision changed.',409);const {workflow,...rest}=patch;Object.assign(latest,rest);if(workflow)Object.assign(latest.workflow,workflow);latest.revision++;return write(latest);});
+    const checkpoint=async patch=>{
+      if(priceDesign&&['draft','complete'].includes(patch.workflow?.status)){
+        const current=await locked(id,()=>read(id)),spec=patch.spec||current.spec;
+        if(spec?.parts.length&&!spec.questions.length){
+          await persistCheckpoint({workflow:{status:'running',stage:'pricing',message:'Searching supplier prices for this design. Missing prices remain unknown; geometry is unchanged.'}});
+          patch={...patch,priceSearch:await safePrices(spec)};
+        }
+      }
+      return persistCheckpoint(patch);
+    };
     void (async()=>{try{await execute(structuredClone(p),input,checkpoint);}catch(e){await checkpoint({workflow:{status:'error',stage:'error',message:String(e.message).slice(0,2000),finishedAt:new Date().toISOString()}});}finally{active.delete(id);workflowAdmission=false;}})().catch(e=>console.error('Project workflow persistence failure:',e.message));
     return p;
   }
@@ -194,6 +208,7 @@ export function createProjectStore({root,execute,findJob,assistant,prepareCandid
       Object.assign(current,{spec,designHash:proposal.designHash,model:proposal.model,metrics:proposal.metrics,appliedProposal:{id:proposal.id,parent,at:new Date().toISOString()},revision:current.revision+1});
       current.workflow={id:randomUUID(),mode:'design',status:'draft',stage:'refine',attempts:[],message:'Candidate accepted as a new concept. Existing verification belongs to the prior design; verify this revision explicitly.'};
       if(checkedJob){current.jobId=checkedJob.id;current.verification=checkedJob.verification;current.workflow.message='Checked candidate accepted. Native and deterministic checks belong to this revision; physical commissioning remains outstanding.';}
+      if(priceDesign&&!spec.questions.length)current.priceSearch=await safePrices(spec);
       return write(current);
     });
   }

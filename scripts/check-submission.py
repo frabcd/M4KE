@@ -32,6 +32,7 @@ SERVER_FILES = {
     'server/studio-model-repair.mjs',
     'server/studio-refinement.mjs',
     'server/studio-web-research.mjs',
+    'server/studio-live-prices.mjs',
     'server/studio-model-library.mjs',
     'server/studio-previews.mjs',
     'server/studio-printer.mjs',
@@ -71,6 +72,7 @@ EXACT = {
     'firmware/echo-f1-cn/main.py',
     'firmware/echo-f1-cn/test_controller.py',
     'tests/echo-f1-browser.mjs',
+    'tests/live-prices-browser.mjs',
     'tests/echo-finish-browser.mjs',
     'tests/echo-wiring-browser.mjs',
     'tests/print-plates-browser.mjs',
@@ -201,7 +203,7 @@ def scan_bytes(name, data):
         errors.append('credential-bearing HTTP URL')
     if name == '.env.example':
         lines = [line for line in text.splitlines() if line and not line.startswith('#')]
-        if any(line not in {'OLLAMA_URL=', 'QWEN_MODEL=', 'M4KE_INFERENCE_PROVIDER=', 'PORT=4173', 'M4KE_ALLOW_WEB=', 'M4KE_SEARCH_URL=', 'M4KE_SEARCH_ENGINES=', 'M4KE_PROCUREMENT_SNAPSHOT_SHA256='} for line in lines):
+        if any(line not in {'OLLAMA_URL=', 'QWEN_MODEL=', 'M4KE_INFERENCE_PROVIDER=', 'PORT=4173', 'M4KE_ALLOW_WEB=', 'M4KE_SEARCH_URL=', 'M4KE_SEARCH_ENGINES=', 'M4KE_PRICE_PROXY_URL=', 'M4KE_PROCUREMENT_SNAPSHOT_SHA256='} for line in lines):
             errors.append('environment example contains nonblank runtime configuration')
     return errors
 

@@ -118,6 +118,7 @@ export type Workflow = {
   }[];
 };
 export type Project = {
+  priceSearch?: {designHash:string;automatic:boolean;status:string;lines:{id:string;query:string;quantity:number;unit?:string;status:string;retrievedAt?:string;cacheHit?:boolean;stale?:boolean;offers:{name:string;sku:string|null;amount:string;currency:string;url:string;match:string;availability:string;extraction:string}[];issues:string[]}[];issues?:string[];total:null;completeQuote:false};
   pendingQuestions?: Spec["questions"];
   id: string;
   requiresDesignUpdate?: boolean;
