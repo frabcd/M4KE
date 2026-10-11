@@ -36,14 +36,32 @@ async function writeJson(file,value){
   try{await safePath(file,{file:true});await rename(tmp,file);}finally{await unlink(tmp).catch(e=>{if(e.code!=='ENOENT')throw e;});}
 }
 const allowedStatuses=['running','stopped','questions','accepted','exhausted'];
+function remaining(s){return {requests:64-s.reservations.length,requestedOutputTokens:60000-s.reservations.reduce((n,r)=>n+r.tokenLimit,0),activeMs:2400000-s.reservations.reduce((n,r)=>n+(r.elapsedMs??r.timeoutMs),0)};}
+function requestLimit(key){return key==='readiness'?[1500,180000]:key==='plan'?[4000,300000]:[3000,240000];}
+function validateBudget(s){
+  if(![0,1].includes(s.repairRounds)||!Array.isArray(s.splits)||s.splits.length>64)fail('corrupt retry ledger');
+  const ids=new Set(),counts=new Map();
+  for(const r of s.reservations){
+    exactKeys(r,['id','unitKey','round','tokenLimit','timeoutMs','elapsedMs','outcome','evalCount','promptEvalCount']);
+    if(!UUID.test(r.id)||ids.has(r.id)||![0,1].includes(r.round)||r.round>s.repairRounds)fail('corrupt reservation');ids.add(r.id);
+    if(!['readiness','plan'].includes(r.unitKey))descriptorFor(s.plan,r.unitKey);
+    const limits=requestLimit(r.unitKey);if(!Number.isInteger(r.tokenLimit)||r.tokenLimit<1||r.tokenLimit>limits[0]||!Number.isInteger(r.timeoutMs)||r.timeoutMs<1||r.timeoutMs>limits[1])fail('reservation bounds');
+    if(r.elapsedMs!==null&&(!Number.isFinite(r.elapsedMs)||r.elapsedMs<0||r.elapsedMs>r.timeoutMs))fail('elapsed bounds');
+    if(![null,'stop','length','error','cancelled'].includes(r.outcome)||(r.outcome===null)!==(r.elapsedMs===null))fail('reservation outcome');
+    for(const k of ['evalCount','promptEvalCount'])if(r[k]!==null&&(!Number.isInteger(r[k])||r[k]<0||r[k]>1000000))fail('token measurement');
+    const key=r.round+':'+r.unitKey;counts.set(key,(counts.get(key)||0)+1);if(counts.get(key)>(r.unitKey.includes('~')?1:2))fail('retry budget');
+  }
+  for(const v of Object.values(remaining(s)))if(!Number.isFinite(v)||v<0)fail('generation budget exhausted');
+}
 function validateState(s,projectId,id,identity,context){
-  exactKeys(s,['protocol','projectId','id','identity','status','readiness','plan','planHash','units','invalidations','reservations','repairRounds','createdAt','updatedAt']);
+  exactKeys(s,['protocol','projectId','id','identity','status','readiness','plan','planHash','units','invalidations','reservations','splits','repairRounds','createdAt','updatedAt']);
   if(s.protocol!==PROTOCOL||s.projectId!==projectId||s.id!==id||!allowedStatuses.includes(s.status)||generationIdentity(s.identity.identity).hash!==identity.hash||s.identity.hash!==identity.hash)fail('stale checkpoint identity');
   if(hashGenerationValue(context)!==identity.identity.contextHash)fail('changed context snapshot');
   if(!Array.isArray(s.units)||s.units.length>128||!Array.isArray(s.reservations)||s.reservations.length>64||!Array.isArray(s.invalidations)||s.invalidations.length>128)fail('checkpoint count bounds');
   if(s.readiness)validateReadiness(s.readiness);
   if(s.plan){validateGenerationPlan(s.plan,{readiness:s.readiness,sources:context.sources});if(s.planHash!==hashGenerationValue(s.plan))fail('corrupt plan');}
   else if(s.units.length)fail('units without plan');
+  validateBudget(s);
   const seen=new Set(),checked=[];
   for(const r of s.units){
     exactKeys(r,['key','descriptor','payload','payloadHash','dependencyHashes','planHash','status']);
@@ -68,9 +86,33 @@ export function createGenerationCheckpointStore({root,now=()=>Date.now()}={}){
   const base=path.join(path.resolve(root),'data','design-checkpoints'),handles=new Map();
   const directory=(projectId,id)=>{if(!UUID.test(projectId)||!UUID.test(id))fail('invalid project/generation ID');return path.join(base,projectId,id);};
   function handle(dir,initial,context){
-    let state=initial,tail=Promise.resolve();
+    let state=initial,tail=Promise.resolve();const ownedReservations=new Set();
     const transition=fn=>{const promise=tail.then(async()=>{const next=clone(state);await fn(next);next.updatedAt=now();validateState(next,next.projectId,next.id,next.identity,context);await writeJson(path.join(dir,'state.json'),next);state=next;return clone(state);});tail=promise.catch(()=>{});return promise;};
-    return {id:state.id,context:clone(context),snapshot:()=>clone(state),transition,
+    return {id:state.id,context:clone(context),snapshot:()=>clone(state),
+      remaining:()=>remaining(state),
+      async reserve({unitKey,tokenLimit,timeoutMs}){
+        const reservationId=randomUUID();let reservedTimeout;
+        await transition(s=>{
+          const [maxTokens,maxTime]=requestLimit(unitKey);if(!Number.isInteger(tokenLimit)||tokenLimit<1||tokenLimit>maxTokens||!Number.isInteger(timeoutMs)||timeoutMs<1||timeoutMs>maxTime)fail('request limits');
+          if(!['readiness','plan'].includes(unitKey))descriptorFor(s.plan,unitKey);
+          const spent=s.reservations.filter(r=>r.unitKey===unitKey&&r.round===s.repairRounds),splitKey=s.repairRounds+':'+unitKey;
+          if(spent.length>=(unitKey.includes('~')?1:2)||s.splits.includes(splitKey))fail('retry budget exhausted');
+          if(unitKey.includes('~')&&!s.splits.includes(s.repairRounds+':'+unitKey.split('~')[0]))fail('split not reserved');
+          const left=remaining(s);if(left.requests<1||left.requestedOutputTokens<tokenLimit||left.activeMs<1)fail('generation budget exhausted');
+          reservedTimeout=Math.floor(Math.min(timeoutMs,left.activeMs));
+          s.reservations.push({id:reservationId,unitKey,round:s.repairRounds,tokenLimit,timeoutMs:reservedTimeout,elapsedMs:null,outcome:null,evalCount:null,promptEvalCount:null});
+        });ownedReservations.add(reservationId);return {reservationId,timeoutMs:reservedTimeout};
+      },
+      settle:(reservationId,{elapsedMs,outcome,evalCount=null,promptEvalCount=null})=>transition(s=>{
+        const r=s.reservations.find(r=>r.id===reservationId);if(!ownedReservations.has(reservationId)||!r||r.outcome!==null)fail('orphaned or settled reservation');
+        if(!Number.isFinite(elapsedMs)||elapsedMs<0)fail('invalid elapsed time');
+        Object.assign(r,{elapsedMs:Math.min(elapsedMs,r.timeoutMs),outcome,evalCount,promptEvalCount});
+      }),
+      startSplit:key=>transition(s=>{
+        const descriptor=descriptorFor(s.plan,key),attempts=s.reservations.filter(r=>r.unitKey===key&&r.round===s.repairRounds),split=s.repairRounds+':'+key;
+        if(descriptor.ids.length<2||attempts.length!==1||attempts[0].outcome!=='length'||s.splits.includes(split))fail('split retry exhausted');s.splits.push(split);
+      }),
+      beginRepair:()=>transition(s=>{if(s.repairRounds!==0)fail('final repair exhausted');s.repairRounds=1;}),
       saveReadiness:r=>transition(s=>{const clean=validateReadiness(r);if(s.readiness&&!equal(s.readiness,clean))fail('immutable readiness');s.readiness=clean;}),
       savePlan:p=>transition(s=>{const clean=validateGenerationPlan(p,{readiness:s.readiness,sources:context.sources});if(s.plan&&!equal(clean,s.plan))fail('immutable plan');s.plan=clean;s.planHash=hashGenerationValue(clean);}),
       saveUnit:record=>transition(s=>{exactKeys(record,['descriptor','payload','dependencyHashes']);const d=record.descriptor,clean=validateGenerationUnit(s.plan,d,record.payload,s.units);if(!equal(record.dependencyHashes,dependencyHashes(s,d)))fail('stale dependency');if(s.units.some(r=>r.key===d.key))fail('unit already exists; invalidate explicitly');s.units.push({key:d.key,descriptor:d,payload:clean,payloadHash:hashGenerationValue(clean),dependencyHashes:record.dependencyHashes,planHash:s.planHash,status:'UNIT_VALIDATED'});}),
@@ -82,7 +124,7 @@ export function createGenerationCheckpointStore({root,now=()=>Date.now()}={}){
     async create({projectId,identity,contextSnapshot}){
       if(identity.hash!==generationIdentity(identity.identity).hash||projectId!==identity.identity.projectId)fail('invalid identity');
       const id=randomUUID(),dir=directory(projectId,id);await safePath(dir,{create:true});
-      const state={protocol:PROTOCOL,projectId,id,identity:clone(identity),status:'running',readiness:null,plan:null,planHash:null,units:[],invalidations:[],reservations:[],repairRounds:0,createdAt:now(),updatedAt:now()};
+      const state={protocol:PROTOCOL,projectId,id,identity:clone(identity),status:'running',readiness:null,plan:null,planHash:null,units:[],invalidations:[],reservations:[],splits:[],repairRounds:0,createdAt:now(),updatedAt:now()};
       validateState(state,projectId,id,identity,contextSnapshot);await writeJson(path.join(dir,'context.json'),contextSnapshot);await writeJson(path.join(dir,'state.json'),state);
       const h=handle(dir,state,contextSnapshot);handles.set(dir,h);return h;
     },
