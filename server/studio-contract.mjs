@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { controllerDecision } from '../shared/car-contract.mjs';
 import { engineeringChecks } from '../engineering/physics.mjs';
-import {validateElectrical,electricalChecks} from './studio-electrical.mjs';
+import {validateElectrical,electricalChecks,validateElectricalItem} from './studio-electrical.mjs';
 
 const ID = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 const BASE_KEYS = ['schemaVersion', 'title', 'description', 'units', 'requirements', 'assumptions', 'unknowns', 'questions', 'parts', 'assembly', 'physicsInputs', 'verificationRequests', 'electrical', 'buildItems'];
@@ -61,23 +61,7 @@ function unionPrimitive(value, path) {
 const primitiveMinimum = shape => shape.type === 'box' ? Math.min(...shape.size) : Math.min(shape.radius * 2, shape.height);
 
 /** Strict, inert data only: no executable CAD scripts, templates, links to execute or extra keys. */
-export function validateDesignSpec(input) {
-  object(input, BASE_KEYS, 'design');
-  if (input.schemaVersion !== 1) fail('schemaVersion', 'expected 1');
-  if (input.units !== 'mm') fail('units', 'expected mm; unit conversion must be explicit before submission');
-  const spec = {
-    schemaVersion: 1, title: string(input.title, 'title', 160), description: string(input.description, 'description', 4000), units: 'mm',
-    requirements: array(input.requirements, 1, 40, 'requirements', (r, path) => {
-      object(r, ['id', 'text'], path); return { id: id(r.id, `${path}.id`), text: string(r.text, `${path}.text`) };
-    }),
-    assumptions: textList(input.assumptions, 40, 'assumptions'), unknowns: textList(input.unknowns, 40, 'unknowns'),
-    questions: array(input.questions, 0, 10, 'questions', (q, path) => {
-      object(q, ['id', 'question', 'options'], path);
-      const item = { id: id(q.id, `${path}.id`), question: string(q.question, `${path}.question`) };
-      if (q.options !== undefined) item.options = array(q.options, 2, 6, `${path}.options`, (x, p) => string(x, p, 240));
-      return item;
-    }),
-    parts: array(input.parts, 0, 48, 'parts', (part, path) => {
+function validatePart(part, path) {
       object(part, PART_KEYS, path);
       const shape = object(part.shape, ['type', 'size', 'radius', 'height', 'catalogId', 'sourceSha256', 'solids'], `${path}.shape`);
       let cleanShape;
@@ -133,8 +117,9 @@ export function validateDesignSpec(input) {
           [key, string(part.explanation[key], `${path}.explanation.${key}`, 1000)]));
       }
       return result;
-    }),
-    assembly: array(input.assembly, 0, 48, 'assembly', (step, path) => {
+}
+
+function validateAssembly(step, path) {
       object(step, ['id', 'title', 'partIds', 'requires', 'instructions', 'checks'], path);
       return {
         id: id(step.id, `${path}.id`), title: string(step.title, `${path}.title`, 160),
@@ -142,28 +127,19 @@ export function validateDesignSpec(input) {
         instructions: array(step.instructions, 1, 12, `${path}.instructions`, (x, p) => string(x, p)),
         checks: array(step.checks, 1, 12, `${path}.checks`, (x, p) => string(x, p)),
       };
-    }),
-  };
-  for (const key of ['requirements', 'questions', 'parts', 'assembly']) unique(spec[key].map((x) => x.id), key);
-  if (!spec.parts.length && !spec.questions.length) fail('parts', 'provide at least one part or an essential clarification question');
-  if (spec.parts.length && !spec.assembly.length) fail('assembly', 'every design part needs an assembly or inspection step');
-  const partIds = new Set(spec.parts.map((x) => x.id));
-  const steps = new Map(spec.assembly.map((x) => [x.id, x]));
-  const referenced = new Set();
-  for (const step of spec.assembly) {
-    unique(step.partIds, `assembly.${step.id}.partIds`); unique(step.requires, `assembly.${step.id}.requires`);
-    for (const partId of step.partIds) { if (!partIds.has(partId)) fail(`assembly.${step.id}`, `unknown part ${partId}`); referenced.add(partId); }
-    for (const prerequisite of step.requires) if (!steps.has(prerequisite)) fail(`assembly.${step.id}`, `unknown prerequisite ${prerequisite}`);
-  }
-  for (const partId of partIds) if (!referenced.has(partId)) fail('assembly', `part ${partId} has no assembly/inspection step`);
-  const visiting = new Set(); const visited = new Set();
-  function visit(stepId) {
-    if (visiting.has(stepId)) fail('assembly', 'dependency cycle');
-    if (visited.has(stepId)) return;
-    visiting.add(stepId); for (const dep of steps.get(stepId).requires) visit(dep);
-    visiting.delete(stepId); visited.add(stepId);
-  }
-  for (const stepId of steps.keys()) visit(stepId);
+}
+
+function validateBuildItem(item,p,partIds) {
+      object(item,['id','name','kind','quantity','unit','specification','source','partIds'],p);
+      const result={id:id(item.id,p+'.id'),name:string(item.name,p+'.name',160),kind:oneOf(item.kind,['fastener','connector','consumable','tool'],p+'.kind'),quantity:number(item.quantity,.001,10000,p+'.quantity'),unit:oneOf(item.unit,['piece','mm','g','set'],p+'.unit'),specification:string(item.specification,p+'.specification',500),source:string(item.source,p+'.source'),partIds:array(item.partIds,1,24,p+'.partIds',(v,q)=>{const value=id(v,q);if(!partIds.has(value))fail(q,'unknown part');return value;})};
+      if(partIds.has(result.id))fail(p+'.id','build-item ID must differ from geometric part IDs');
+      if(['piece','set'].includes(result.unit)&&!Number.isInteger(result.quantity))fail(p+'.quantity','discrete items require integer quantities');
+      return result;
+}
+
+function validateMetadata(input,context) {
+  const spec={parts:context.parts,requirements:context.requirements};
+  const partIds=new Set(spec.parts.map(p=>p.id));
   if(input.verificationRequests!==undefined){
     const requirementIds=new Set(spec.requirements.map(r=>r.id));
     const ref=(value,p)=>{const result=id(value,p);if(!partIds.has(result))fail(p,'unknown part');return result;};
@@ -213,14 +189,51 @@ export function validateDesignSpec(input) {
       spec.physicsInputs[key] = { value, basis: oneOf(item.basis, ['ASSUMED', 'USER', 'MANUFACTURER', 'MEASURED'], `${path}.basis`), source: string(item.source, `${path}.source`) };
     }
   }
+  const {parts,requirements,...result}=spec;return result;
+}
+
+export function validateDesignSpec(input) {
+  object(input, BASE_KEYS, 'design');
+  if (input.schemaVersion !== 1) fail('schemaVersion', 'expected 1');
+  if (input.units !== 'mm') fail('units', 'expected mm; unit conversion must be explicit before submission');
+  const spec = {
+    schemaVersion: 1, title: string(input.title, 'title', 160), description: string(input.description, 'description', 4000), units: 'mm',
+    requirements: array(input.requirements, 1, 40, 'requirements', (r, path) => {
+      object(r, ['id', 'text'], path); return { id: id(r.id, `${path}.id`), text: string(r.text, `${path}.text`) };
+    }),
+    assumptions: textList(input.assumptions, 40, 'assumptions'), unknowns: textList(input.unknowns, 40, 'unknowns'),
+    questions: array(input.questions, 0, 10, 'questions', (q, path) => {
+      object(q, ['id', 'question', 'options'], path);
+      const item = { id: id(q.id, `${path}.id`), question: string(q.question, `${path}.question`) };
+      if (q.options !== undefined) item.options = array(q.options, 2, 6, `${path}.options`, (x, p) => string(x, p, 240));
+      return item;
+    }),
+    parts: array(input.parts, 0, 48, 'parts', validatePart),
+    assembly: array(input.assembly, 0, 48, 'assembly', validateAssembly),
+  };
+  for (const key of ['requirements', 'questions', 'parts', 'assembly']) unique(spec[key].map((x) => x.id), key);
+  if (!spec.parts.length && !spec.questions.length) fail('parts', 'provide at least one part or an essential clarification question');
+  if (spec.parts.length && !spec.assembly.length) fail('assembly', 'every design part needs an assembly or inspection step');
+  const partIds = new Set(spec.parts.map((x) => x.id));
+  const steps = new Map(spec.assembly.map((x) => [x.id, x]));
+  const referenced = new Set();
+  for (const step of spec.assembly) {
+    unique(step.partIds, `assembly.${step.id}.partIds`); unique(step.requires, `assembly.${step.id}.requires`);
+    for (const partId of step.partIds) { if (!partIds.has(partId)) fail(`assembly.${step.id}`, `unknown part ${partId}`); referenced.add(partId); }
+    for (const prerequisite of step.requires) if (!steps.has(prerequisite)) fail(`assembly.${step.id}`, `unknown prerequisite ${prerequisite}`);
+  }
+  for (const partId of partIds) if (!referenced.has(partId)) fail('assembly', `part ${partId} has no assembly/inspection step`);
+  const visiting = new Set(); const visited = new Set();
+  function visit(stepId) {
+    if (visiting.has(stepId)) fail('assembly', 'dependency cycle');
+    if (visited.has(stepId)) return;
+    visiting.add(stepId); for (const dep of steps.get(stepId).requires) visit(dep);
+    visiting.delete(stepId); visited.add(stepId);
+  }
+  for (const stepId of steps.keys()) visit(stepId);
+  Object.assign(spec,validateMetadata(input,spec));
   if(input.buildItems!==undefined){
-    spec.buildItems=array(input.buildItems,0,40,'buildItems',(item,p)=>{
-      object(item,['id','name','kind','quantity','unit','specification','source','partIds'],p);
-      const result={id:id(item.id,p+'.id'),name:string(item.name,p+'.name',160),kind:oneOf(item.kind,['fastener','connector','consumable','tool'],p+'.kind'),quantity:number(item.quantity,.001,10000,p+'.quantity'),unit:oneOf(item.unit,['piece','mm','g','set'],p+'.unit'),specification:string(item.specification,p+'.specification',500),source:string(item.source,p+'.source'),partIds:array(item.partIds,1,24,p+'.partIds',(v,q)=>{const value=id(v,q);if(!partIds.has(value))fail(q,'unknown part');return value;})};
-      if(partIds.has(result.id))fail(p+'.id','build-item ID must differ from geometric part IDs');
-      if(['piece','set'].includes(result.unit)&&!Number.isInteger(result.quantity))fail(p+'.quantity','discrete items require integer quantities');
-      return result;
-    });unique(spec.buildItems.map(x=>x.id),'buildItems');
+    spec.buildItems=array(input.buildItems,0,40,'buildItems',(item,p)=>validateBuildItem(item,p,partIds));unique(spec.buildItems.map(x=>x.id),'buildItems');
   }
   if(input.electrical!==undefined)spec.electrical=validateElectrical(input.electrical,spec);
   return spec;
@@ -308,4 +321,25 @@ export function verifyDesign(input, cadResult = null) {
     'No FEA, thermal simulation, dynamic assembly collision solver, calibrated sound measurement or physical test has been performed.',
     'Tutorial checks and UI completion clicks do not establish physical completion. Printed parts, source catalog assemblies and unsourced purchased envelopes must be distinguished.',
   ] };
+}
+
+/** Local structural checks only; full design admission remains mandatory. */
+export function validateGenerationItem(kind,value,context={}) {
+  const {knownPartIds=new Set(),knownStepIds=new Set()}=context;
+  if(kind==='part') return validatePart(value,'part');
+  if(kind==='assembly') {
+    const step=validateAssembly(value,'assembly');
+    unique(step.partIds,'assembly.partIds');unique(step.requires,'assembly.requires');
+    if(step.partIds.some(id=>!knownPartIds.has(id))||step.requires.some(id=>!knownStepIds.has(id))) fail('assembly','unknown reference');
+    return step;
+  }
+  if(kind==='buildItem') return validateBuildItem(value,'buildItem',knownPartIds);
+  if(kind==='electricalComponent'||kind==='connection') return validateElectricalItem(kind,value,context);
+  if(kind==='metadata') {
+    object(value,['physicsInputs','verificationRequests','control'],'metadata');
+    const result=validateMetadata(value,{parts:context.parts||[],requirements:context.requirements||[]});
+    if(value.control!==undefined) result.control=validateElectricalItem('control',value.control,context);
+    return result;
+  }
+  fail('generation','unknown item kind');
 }
