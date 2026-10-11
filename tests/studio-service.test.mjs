@@ -8,6 +8,40 @@ import {createHash} from 'node:crypto';
 import {createStudioService,tutorialHTML,PRINTERS,csvCell} from '../server/studio-service.mjs';
 import {validateDesignSpec,designHash,verifyDesign} from '../server/studio-contract.mjs';
 import {OLLAMA_DESIGN_SCHEMA,designSchemaForDraft} from '../server/studio-schema.mjs';
+import {readiness as stagedReady,plan as stagedPlan,payload as stagedPayload} from './helpers/staged-generation-fixture.mjs';
+import {partitionGeneration} from '../server/studio-generation-stages.mjs';
+
+test('opt-in staged HTTP workflow asks questions before geometry and never prices them',async()=>{
+  const before=process.env.M4KE_STAGED_GENERATION;process.env.M4KE_STAGED_GENERATION='1';
+  const f=await fixture({reply:{...stagedReady(),status:'questions',questions:[{id:'battery',question:'Which battery?'}]}});
+  try{
+    const p=await (await requestFixture(f.url+'/api/studio/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request:'fixture'})})).json();
+    const started=await (await requestFixture(f.url+`/api/studio/projects/${p.id}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'design',expectedRevision:p.revision})})).json();assert.ok(started.workflow?.generationId,JSON.stringify(started));
+    let end;for(let i=0;i<200;i++){end=await(await requestFixture(f.url+`/api/studio/projects/${p.id}`)).json();if(end.workflow.status!=='running')break;await new Promise(r=>setTimeout(r,10));}
+    assert.equal(end.workflow.status,'questions',end.workflow.message);assert.equal(end.pendingQuestions.length,1);assert.equal(end.spec,undefined);assert.equal(end.designHash,undefined);assert.equal(end.priceSearch,undefined);assert.equal(f.calls.length,1);
+  }finally{if(before===undefined)delete process.env.M4KE_STAGED_GENERATION;else process.env.M4KE_STAGED_GENERATION=before;await f.close();}
+});
+test('opt-in staged HTTP concept publishes accepted hash and automatic pricing only at completion',async()=>{
+  const before=process.env.M4KE_STAGED_GENERATION;process.env.M4KE_STAGED_GENERATION='1';const p=stagedPlan(),units=partitionGeneration(p),responses=[stagedReady(),p,...units.map(u=>{const v=stagedPayload(p,u);if(u.kind==='part')for(const part of v.items)part.explanation={purpose:'Fixture',placementReason:'Fixture',selectionReason:'Fixture'};return v;})];
+  const f=await fixture({reply:n=>responses[n-1]});
+  try{
+    const project=await(await requestFixture(f.url+'/api/studio/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request:'Inspect fixture'})})).json();
+    const start=await(await requestFixture(f.url+`/api/studio/projects/${project.id}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'design',expectedRevision:project.revision})})).json();assert.ok(start.workflow?.generationId,JSON.stringify(start));
+    let end;for(let i=0;i<300;i++){end=await(await requestFixture(f.url+`/api/studio/projects/${project.id}`)).json();if(end.workflow.status!=='running')break;assert.equal(end.spec,undefined);await new Promise(r=>setTimeout(r,10));}
+    assert.equal(end.workflow.status,'draft',end.workflow.message);assert.equal(end.designHash,designHash(end.spec));assert.equal(end.priceSearch.designHash,end.designHash);assert.equal(f.calls.length,responses.length);assert.equal(end.workflow.canCancel,false);
+  }finally{if(before===undefined)delete process.env.M4KE_STAGED_GENERATION;else process.env.M4KE_STAGED_GENERATION=before;await f.close();}
+});
+test('staged HTTP resume preserves earlier batch and rejects stale project revision',async()=>{
+ const before=process.env.M4KE_STAGED_GENERATION;process.env.M4KE_STAGED_GENERATION='1';const p=stagedPlan(5),units=partitionGeneration(p);let calls=0,failed=false;
+ const reply=()=>{calls++;if(calls===1)return stagedReady();if(calls===2)return p;if(calls===4&&!failed){failed=true;throw Error('fixture transport disconnected');}const u=units[calls-(failed?4:3)];const v=stagedPayload(p,u);if(u.kind==='part')for(const part of v.items)part.explanation={purpose:'Fixture',placementReason:'Fixture',selectionReason:'Fixture'};return v;};
+ const f=await fixture({reply});const send=async(id,body)=>requestFixture(f.url+`/api/studio/projects/${id}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const settle=async(id)=>{for(let i=0;i<200;i++){const p=await(await requestFixture(f.url+`/api/studio/projects/${id}`)).json();if(p.workflow.status!=='running')return p;await new Promise(r=>setTimeout(r,10));}throw Error('workflow timeout');};
+ try{
+  const project=await(await requestFixture(f.url+'/api/studio/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request:'Inspect fixture'})})).json();await send(project.id,{mode:'design',expectedRevision:project.revision});const stopped=await settle(project.id);assert.equal(stopped.workflow.status,'error');assert.equal(stopped.workflow.canResume,true);assert.equal(stopped.spec,undefined);
+  assert.equal((await send(project.id,{mode:'design',expectedRevision:1,resumeGenerationId:stopped.workflow.generationId})).status,409);assert.equal(calls,4);
+  assert.equal((await send(project.id,{mode:'design',expectedRevision:stopped.revision,resumeGenerationId:stopped.workflow.generationId})).status,202);const end=await settle(project.id);assert.equal(end.workflow.status,'draft',end.workflow.message);assert.equal(end.spec.parts.length,5);assert.equal(calls,7);
+ }finally{if(before===undefined)delete process.env.M4KE_STAGED_GENERATION;else process.env.M4KE_STAGED_GENERATION=before;await f.close();}
+});
 
 // Each short-lived fixture gets fresh sockets. Windows can immediately reuse a
 // closed listener's port; a process-global fetch pool must not cross fixtures.

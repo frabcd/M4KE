@@ -1,3 +1,4 @@
+import {createStagedService} from './studio-staged-service.mjs';
 import {inspectInitialDraft,architectureBindingIssues,admitGeneratedDesign} from './studio-generation-admission.mjs';
 export {inspectInitialDraft,architectureBindingIssues} from './studio-generation-admission.mjs';
 import {requestConstraintIssues, REQUEST_GUIDANCE} from './studio-request-constraints.mjs';
@@ -86,13 +87,14 @@ export function createStudioService({root,getSettings,localFetch,getModels,body,
   const jobsRoot=path.join(root,'data','studio-jobs');
   const python=process.env.M4KE_CAD_PYTHON || path.join(root,'.venv-cad',process.platform==='win32'?'Scripts/python.exe':'bin/python');
   const jobs=new Map(); let building=false,designing=false,packing=false,probeCache=null,inferenceTail=Promise.resolve();
-  const projects=createProjectStore({root,execute:runWorkflow,findJob,assistant:projectAssistant,prepareCandidate,priceDesign});
+  const projects=createProjectStore({root,execute:runWorkflow,findJob,assistant:projectAssistant,prepareCandidate,priceDesign,prepareWorkflow:(p,i)=>stagedService.prepareWorkflow(p,i),resumeState:p=>stagedService.resumeState(p)});
   const printing=createPrintingService({root,python,runProcess:processRunner,findJob,checkedRead,body,json});
   const printer=createPrinterService({body,json});
   const snapshotSha256=resolveProcurementSnapshot();
   const procurement=createProcurementService({root,json,snapshotSha256});
   const integrations=createIntegrationsService({root,json,body,snapshotSha256}),sourcing=createIntegrationRuntime({root,snapshotSha256}),research=createWebResearch({root});
   const livePrices=createLivePrices({root,research,...supplierFetch?{get:supplierFetch}:{}});
+  const stagedService=createStagedService({root,getSettings,getModels,localCatalog,infer,sourcing});
   async function priceDesign(spec){
     let catalog;try{catalog=await localCatalog();}catch{catalog={components:[]};}
     return {...await livePrices.searchDesign(spec,catalog),designHash:designHash(spec)};
@@ -275,7 +277,7 @@ export function createStudioService({root,getSettings,localFetch,getModels,body,
       current.spec=validateRepair(repairBase,current.spec);
     }
   }
-  async function runWorkflow(project,input,saveCheckpoint){
+  async function runWorkflow(project,input,saveCheckpoint,signal){
     // Delivery mode stages drafts privately until native checks succeed. A failed
     // candidate never overwrites the last published design or its artifacts.
     let staged={};
@@ -301,13 +303,18 @@ export function createStudioService({root,getSettings,localFetch,getModels,body,
       result={spec,designHash:designHash(spec),model:project.model,metrics,verification:verifyDesign(spec),...source};
       if(source.kitId)input={...input,kitId:source.kitId,parameters:source.parameters};
     }else if(input.kitId){const catalog=await localCatalog();const compiled=compileDesignKit(input.kitId,input.parameters||{},catalog);const spec=validateDesignSpec(compiled.spec);result={spec,portableRevision:compiled.portableRevision,designHash:designHash(spec),model:'deterministic-source-kit',verification:verifyDesign(spec),catalogHash:catalog.manifestSha256};}
+    else if(project.workflow.generationId){
+      result=await stagedService.generate(project,input,signal,async progress=>checkpoint({workflow:{generationId:progress.generationId,generationState:progress.stage,generation:progress,canResume:progress.canResume===true,message:'Staged generation: '+progress.stage+'; saved units are not engineering verification.'}}));
+      signal?.throwIfAborted();await checkpoint({workflow:{canCancel:false,canResume:false}});
+      if(result.spec.questions.length){await checkpoint({pendingQuestions:result.spec.questions,workflow:{status:'questions',stage:'questions',message:'Answer essential questions before CAD or pricing.',finishedAt:new Date().toISOString()}});return;}
+    }
     else result=await generate({request,answers:project.answers,previousSpec:project.spec,requirePartExplanations:['design','deliver'].includes(input.mode)},undefined,async progress=>checkpoint({workflow:{inference:progress,message:progress.phase==='truncated'?`Design output reached its ${progress.tokenLimit}-token limit; ${progress.willRetry?'one larger-budget retry is being prepared':'no further truncation retry is allowed'}. No CAD specification accepted.`:progress.phase==='validating'?'Checking the generated design contract; no CAD or physical pass is implied.':progress.phase==='retrying'&&progress.retryReason==='output-truncated'?`Retrying after output truncation with a ${progress.tokenLimit}-token ceiling. Required fields and checks remain unchanged.`:progress.phase==='retrying'?'The draft needs correction; the model is receiving concrete validation feedback.':progress.phase==='generating'?'The local model is producing the design. Progress counts reflect received output, not verified parts.':'Waiting for the local model response; your saved brief is preserved.'}}));
     if(input.mode==='design'){
       const questions=result.spec.questions.length>0;
       await checkpoint({requiresDesignUpdate:false,spec:result.spec,designHash:result.designHash,model:result.model,metrics:result.metrics||null,verification:result.verification,jobId:null,...input.kitId?{designSource:{kitId:input.kitId,parameters:input.parameters||{},catalogHash:result.catalogHash,...result.portableRevision?{portableRevision:result.portableRevision}:{}}}:{},workflow:{status:questions?'questions':'draft',stage:questions?'questions':'refine',attempts:[],message:questions?'Answer the essential questions before generating a concept.':'Concept saved. Review parts and proposed changes, then start feasibility verification explicitly.',finishedAt:new Date().toISOString()}});
       return;
     }
-    if(input.mode!=='verify'&&!input.kitId&&getSettings().provider!=='codex-bridge'&&result.spec.parts.length&&!result.spec.questions.length){
+    if(!result.metrics?.staged&&input.mode!=='verify'&&!input.kitId&&getSettings().provider!=='codex-bridge'&&result.spec.parts.length&&!result.spec.questions.length){
       await checkpoint({workflow:{stage:'planning_checks',message:'Qwen verification skill is selecting bounded host checks; it cannot supply results or remove existing checks.'}});
       const planned=await planDesignVerification({spec:result.spec,catalog:await localCatalog(),skills:await loadStudioSkills(),...getSettings(),infer});
       const parentPath=path.join(root,'data','design-runs',result.metrics.runId+'.json'),parentBytes=await readFile(parentPath),parent=JSON.parse(parentBytes);
@@ -521,11 +528,12 @@ export function createStudioService({root,getSettings,localFetch,getModels,body,
       if(action==='assistant'&&req.method==='POST'){json(res,200,await projects.assist(id,await body(req,32768),signal));return true;}
       if(proposalId&&req.method==='POST'){json(res,200,await projects.applyProposal(id,proposalId,await body(req,8192)));return true;}
     }
-    const projectMatch=pathname.match(/^\/api\/studio\/projects\/([^/]+)(?:\/(run))?$/);
+    const projectMatch=pathname.match(/^\/api\/studio\/projects\/([^/]+)(?:\/(run|cancel))?$/);
     if(projectMatch){
       if(!projectMatch[2]&&req.method==='GET'){json(res,200,await projects.get(projectMatch[1]));return true;}
       if(['POST','PUT'].includes(req.method)&&!req.headers['content-type']?.startsWith('application/json'))throw fail('Use application/json.',415);
       if(!projectMatch[2]&&req.method==='PUT'){json(res,200,await projects.update(projectMatch[1],await body(req,262144)));return true;}
+      if(projectMatch[2]==='cancel'&&req.method==='POST'){json(res,202,await projects.cancel(projectMatch[1],await body(req,8192)));return true;}
       if(projectMatch[2]==='run'&&req.method==='POST'){if(building||designing)throw fail('Local inference or CAD is busy; retry after it completes.',429);json(res,202,await projects.start(projectMatch[1],await body(req,131072)));return true;}
     }
     const libraryAsset=pathname.match(/^\/api\/studio\/library\/(source|collider)\/([0-9a-f]{64})(?:\/(vertices|indices|overview))?$/);

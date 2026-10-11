@@ -121,6 +121,10 @@ export function createGenerationCheckpointStore({root,now=()=>Date.now()}={}){
     };
   }
   return {
+    async inspect({projectId,generationId}){
+      const dir=directory(projectId,generationId);await safePath(dir);const context=await readJson(path.join(dir,'context.json')),s=await readJson(path.join(dir,'state.json'));
+      validateState(s,projectId,generationId,s.identity,context);return {state:clone(s),context};
+    },
     async create({projectId,identity,contextSnapshot}){
       if(identity.hash!==generationIdentity(identity.identity).hash||projectId!==identity.identity.projectId)fail('invalid identity');
       const id=randomUUID(),dir=directory(projectId,id);await safePath(dir,{create:true});
