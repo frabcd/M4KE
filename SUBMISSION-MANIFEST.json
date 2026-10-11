@@ -477,8 +477,8 @@
       "bytes": 7357
     },
     "scripts/check-submission.py": {
-      "sha256": "7e3e5a100ed53c3488beacb0ff234e0046979b668f91a5e3e75521f0524e7046",
-      "bytes": 16187
+      "sha256": "d78df8aa3d7cfe71e504711297ff6c1caf097cb790ffad111c3dd048dedf59bb",
+      "bytes": 16226
     },
     "scripts/codex-demo-bridge.mjs": {
       "sha256": "4e6600811ca7539579909b93ee6152052e728710c5915fefa19d063571d60080",
@@ -592,6 +592,10 @@
       "sha256": "76849b19eee93ad78a0c6eb80ad46ee7aab7143f9da64a950ba3a4680bd3da3d",
       "bytes": 7377
     },
+    "server/studio-output-budget.mjs": {
+      "sha256": "b5c943f62a4a4fa791b84e767104e88639d1aee29adade2f6b73ef6dca95dbe5",
+      "bytes": 612
+    },
     "server/studio-previews.mjs": {
       "sha256": "c80494e1eeb393611fbe7b697031e418ec5e3a2472108dd7f41333889f4b6fbd",
       "bytes": 7544
@@ -637,8 +641,8 @@
       "bytes": 8809
     },
     "server/studio-service.mjs": {
-      "sha256": "3af96e4161aacc8f7ca54ae892378338de8c587884775d9921a432eefbd0c875",
-      "bytes": 84455
+      "sha256": "d858cea3376d3ef57abf61951b3cd1a11405f0406409e382344474dd1cde035e",
+      "bytes": 86051
     },
     "server/studio-skills.mjs": {
       "sha256": "beee1bf73351a6ddb4624ffd2548654b4ea22c9d461108b0146f7262b286f036",
@@ -737,8 +741,8 @@
       "bytes": 6830
     },
     "src/components/BriefPreview.vue": {
-      "sha256": "7850fb6aab5371f9227ad2466be3f751341199d6b49c77795d4224e1c999def7",
-      "bytes": 5372
+      "sha256": "a242a239357724994dfc4bf6afde532d0b29903617bc507761b7cbbaf6d246e7",
+      "bytes": 6502
     },
     "src/components/BuildAppearance.vue": {
       "sha256": "2d2d6c46716435016d089da71491a2eb88751ef1c920a4734318edc56441d4c6",
@@ -873,8 +877,8 @@
       "bytes": 28797
     },
     "src/studio/types.ts": {
-      "sha256": "881df5669dc1d8c4d460285c167adae7a29a5fbca247805c1a5bcfd276fdb887",
-      "bytes": 5169
+      "sha256": "d8eedf98a039a27f16f1d49eaee56dd2cd963b7956a43c56f71ec78e89414a45",
+      "bytes": 5264
     },
     "src/viewport/assembly-playback.mjs": {
       "sha256": "fe75486af703a2393245aefad6ad51144256b89e6f4b052ec61d43e030f28df8",
@@ -1216,6 +1220,10 @@
       "sha256": "64c160e64638e6ea38542aed1cd78bddc7d4e490f023f8ff49e9022e7be0f370",
       "bytes": 12607
     },
+    "tests/studio-output-budget.test.mjs": {
+      "sha256": "edf3eddf07f369465094d31669acac80fddbbd27350ec40d60981031b68c962b",
+      "bytes": 1056
+    },
     "tests/studio-previews.test.mjs": {
       "sha256": "db4c45ffccad45291c19bcae9f70b825072c3cd7afd3555b8fce55994d07ec56",
       "bytes": 6667
@@ -1253,12 +1261,12 @@
       "bytes": 14470
     },
     "tests/studio-service.test.mjs": {
-      "sha256": "8fde2d18001c56c00f64aab832f40f63a7f78fbc5d35cdaf19602f4a56313d71",
-      "bytes": 18158
+      "sha256": "2c6ada9c350c0069890d4704ac62d7aaae2e7850d384014a427113d4c75d0187",
+      "bytes": 23545
     },
     "tests/studio-shell-e2e.mjs": {
-      "sha256": "55f80792cf17cf83b464eb5e17b669729807c4f3d4c3258c63bd953c655d83a4",
-      "bytes": 45249
+      "sha256": "6608897d1ae12c0871dd9519c0ccd3238221cf1d97c55859fa8afce5126cad58",
+      "bytes": 47099
     },
     "tests/studio-union.test.mjs": {
       "sha256": "bc6171a7ea0585a7ddc0c52271ff9b05c3fc58fcca0087a9e750eba002614fe2",
@@ -1341,8 +1349,8 @@
       "bytes": 11712
     },
     "texting.txt": {
-      "sha256": "5d258351998388accdf7fa010621151fdca4bbc6e711065b4dc2b3fcda641d38",
-      "bytes": 18130
+      "sha256": "cd6fede4a25661107ae108b2ea6af6752966a1fe465118927e196c9306ab0c62",
+      "bytes": 25916
     },
     "tsconfig.json": {
       "sha256": "5254b6412d77d8bcbcf50652402d4ee45a1379d3335cb3c155367e886961e51c",

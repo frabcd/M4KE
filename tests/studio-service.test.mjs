@@ -108,7 +108,7 @@ test('project API persists on server and automatic local intake pauses for essen
     let res=await send('/api/studio/projects',{request:'Design a toy',answers:[]});assert.equal(res.status,201);const project=await res.json();
     res=await send(`/api/studio/projects/${project.id}/run`,{});assert.equal(res.status,202);
     let done;for(let i=0;i<100;i++){done=await(await requestFixture(f.url+`/api/studio/projects/${project.id}`)).json();if(done.workflow?.status!=='running')break;await new Promise(r=>setTimeout(r,10));}
-    assert.equal(done.workflow.status,'questions');assert.equal(done.spec.questions[0].id,'size');assert.equal(done.jobId,null);
+    assert.equal(done.workflow.status,'questions');assert.equal(done.spec.questions[0].id,'size');assert(!done.jobId);
     assert.equal(JSON.parse(f.calls[0][2].body).messages[1].role,'user');assert(JSON.parse(JSON.parse(f.calls[0][2].body).messages[1].content).localCatalog.offline);
     res=await send(`/api/studio/projects/${project.id}`,{expectedRevision:1,request:'stale'},'PUT');assert.equal(res.status,409);
     const listed=await(await requestFixture(f.url+'/api/studio/projects')).json();assert.equal(listed.projects[0].id,project.id);
@@ -117,9 +117,66 @@ test('project API persists on server and automatic local intake pauses for essen
 });
 
 // Even parseable JSON cannot be accepted when the model reports truncation.
-test('token-limit completion is rejected and bounded rather than accepted as a design',async()=>{const f=await fixture({doneReason:'length'});try{const res=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json',connection:'close'},body:JSON.stringify({request:'toy'})});assert.equal(res.status,422);assert.match((await res.json()).error,/truncated/);assert.equal(f.calls.length,3);}finally{await f.close();}});
+test('repeated token-limit completions stop after one larger-budget retry, even for parseable JSON',async()=>{const f=await fixture({doneReason:'length'});try{const res=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json',connection:'close'},body:JSON.stringify({request:'toy'})});assert.equal(res.status,422);assert.match((await res.json()).error,/truncated/);assert.equal(f.calls.length,2);assert.deepEqual(f.calls.map(c=>JSON.parse(c[2].body).options.num_predict),[10000,20000]);const files=await readdir(path.join(f.root,'data/design-runs'));const receipt=JSON.parse(await readFile(path.join(f.root,'data/design-runs',files.find(x=>x.endsWith('.json'))),'utf8'));assert.equal(receipt.status,'rejected');assert.equal(receipt.designHash,null);assert.deepEqual(receipt.attempts.map(a=>a.inferenceConfig.num_predict),[10000,20000]);assert(!await readdir(path.join(f.root,'data/studio-jobs')).catch(()=>[]).then(x=>x.length));}finally{await f.close();}});
+
+test('truncation recovery retains schema and required fields, with each budget saved before retry',async()=>{
+  let witnessed=false;
+  const f=await fixture({doneReason:n=>n===1?'length':'stop',onInfer:async(root,count)=>{
+    if(count!==2)return;
+    const dir=path.join(root,'data/design-runs'),files=await readdir(dir);
+    const saved=JSON.parse(await readFile(path.join(dir,files.find(x=>x.endsWith('.json'))),'utf8'));
+    assert.equal(saved.designHash,null);assert.equal(saved.attempts[0].doneReason,'length');assert.equal(saved.attempts[0].inferenceConfig.num_predict,10000);assert.equal(saved.inferenceConfig.num_predict,20000);assert.match(saved.errors[0],/truncated/);witnessed=true;
+  }});
+  try{
+    const res=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({request:'toy'})});
+    assert.equal(res.status,200);assert(witnessed);const result=await res.json();assert.equal(result.metrics.attempts,2);
+    const [first,second]=f.calls.map(c=>JSON.parse(c[2].body));assert.deepEqual(second.format,first.format);assert.equal(second.options.num_predict,20000);assert.equal(f.calls[1][3],1200000);assert.match(second.messages[0].content,/required design and electrical fields/);
+    assert.deepEqual(result.spec.requirements,sample().requirements);assert.deepEqual(result.spec.parts,sample().parts);
+  }finally{await f.close();}
+});
+
+test('project progress exposes the truncation reason and larger retry budget',async()=>{
+  let release,entered;const paused=new Promise(r=>entered=r),gate=new Promise(r=>release=r);
+  const f=await fixture({doneReason:'length',onInfer:async(root,count)=>{if(count===2){entered();await gate;}}});
+  try{
+    const post=(url,data)=>requestFixture(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});
+    const project=await(await post(f.url+'/api/studio/projects',{request:'toy',answers:[]})).json();
+    assert.equal((await post(f.url+`/api/studio/projects/${project.id}/run`,{})).status,202);
+    await paused;
+    const current=await(await requestFixture(f.url+`/api/studio/projects/${project.id}`)).json();
+    assert.equal(current.workflow.inference.retryReason,'output-truncated');assert.equal(current.workflow.inference.attempt,2);assert.equal(current.workflow.inference.previousTokenLimit,10000);assert.equal(current.workflow.inference.tokenLimit,20000);assert(!current.jobId);
+    release();let done;for(let n=0;n<100;n++){done=await(await requestFixture(f.url+`/api/studio/projects/${project.id}`)).json();if(done.workflow.status!=='running')break;await new Promise(r=>setTimeout(r,10));}
+    assert.equal(done.workflow.status,'error');assert.equal(f.calls.length,2);assert(!done.jobId);
+  }finally{release();await f.close();}
+});
 
 // Truncation recovery is an extra FORMAT attempt, not an unbounded engineering repair.
+test('geometry patch repeated truncation stops after one larger-budget recovery',async()=>{
+  const f=await fixture({doneReason:'length',reply:{updates:[{partId:'body',changes:{position:[0,0,5]}}]}});
+  try{
+    const res=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({request:'Repair toy',previousSpec:sample(),repairErrors:['Geometry fixture failed']})});
+    assert.equal(res.status,422);assert.match((await res.json()).error,/No further token-limit retry/);
+    assert.deepEqual(f.calls.map(c=>JSON.parse(c[2].body).options.num_predict),[4500,9000]);
+    const files=await readdir(path.join(f.root,'data/design-runs'));
+    const receipt=JSON.parse(await readFile(path.join(f.root,'data/design-runs',files.find(x=>x.endsWith('.json'))),'utf8'));
+    assert.equal(receipt.status,'rejected');assert.equal(receipt.designHash,null);
+  }finally{await f.close();}
+});
+
+test('geometry patch truncated on its second attempt receives the promised final recovery',async()=>{
+  const patch={updates:[{partId:'body',changes:{position:[0,0,5]}}]};
+  const f=await fixture({doneReason:n=>n===2?'length':'stop',reply:n=>n===1?{updates:[]}:patch});
+  try{
+    const res=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({request:'Repair toy',previousSpec:sample(),repairErrors:['Geometry fixture failed']})});
+    assert.equal(res.status,200);const result=await res.json();
+    assert.equal(result.metrics.attempts,3);
+    assert.deepEqual(f.calls.map(c=>JSON.parse(c[2].body).options.num_predict),[4500,4500,9000]);
+    assert.deepEqual(result.spec.parts[0].position,[0,0,5]);
+    assert.deepEqual(result.spec.requirements,sample().requirements);
+    const receipt=JSON.parse(await readFile(path.join(f.root,'data/design-runs',result.metrics.runId+'.json'),'utf8'));
+    assert.equal(receipt.generationMode,'model-geometry-patch');assert.equal(receipt.status,'accepted');
+  }finally{await f.close();}
+});
 test('one truncation plus an invalid complete draft can recover on bounded third attempt',async()=>{const f=await fixture({doneReason:n=>n===1?'length':'stop',reply:n=>n===2?{bad:true}:sample()});try{const res=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json',connection:'close'},body:JSON.stringify({request:'toy'})});assert.equal(res.status,200);assert.equal(f.calls.length,3);const third=JSON.parse(f.calls[2][2].body);assert.match(third.messages[0].content,/FORMAT REPAIR/);assert.equal((await res.json()).metrics.attempts,3);}finally{await f.close();}});
 
 test('truncation on second format attempt also gets exactly one final opportunity',async()=>{const f=await fixture({doneReason:n=>n===2?'length':'stop',reply:n=>n===1?{bad:true}:sample()});try{const res=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json',connection:'close'},body:JSON.stringify({request:'toy'})});assert.equal(res.status,200);assert.equal(f.calls.length,3);const payload=JSON.parse(f.calls[2][2].body);assert.equal(payload.options.num_ctx,65536);assert(Object.keys(payload.format.properties).indexOf('electrical')<Object.keys(payload.format.properties).indexOf('assembly'));}finally{await f.close();}});
