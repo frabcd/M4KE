@@ -1119,6 +1119,27 @@ try {
       assert.equal(designWrites().length, before);
     } finally { inferenceSettings = saved; }
   });
+  await check("truncation recovery status is visible in Chinese and English", async () => {
+    pending = '';
+    project = {...project,spec:null,jobId:null,designHash:null,workflow:{status:'running',stage:'design',inference:{phase:'generating',attempt:2,retryReason:'output-truncated',previousTokenLimit:10000,tokenLimit:20000}}};
+    await page.goto(`${base}/?project=${projectId}`);
+    await page.getByTestId('truncation-status').waitFor();
+    assert.match(await page.getByTestId('truncation-status').innerText(),/previous response reached its output limit/);
+    assert.match(await page.getByTestId('generation-activity').innerText(),/Generation attempt 2/);
+    assert.match(await page.getByTestId('generation-activity').innerText(),/20,000 tokens/);
+    const savedZh=page.waitForResponse(response=>response.url().endsWith(`/projects/${projectId}/view`)&&response.request().method()==='PUT'&&response.request().postDataJSON()?.language==='zh');
+    await page.getByRole('button',{name:'Switch to Chinese',exact:true}).click();
+    await savedZh;
+    assert.match(await page.getByTestId('truncation-status').innerText(),/上一轮响应触及输出上限/);
+    assert.match(await page.getByTestId('generation-activity').innerText(),/生成尝试 2/);
+    await page.screenshot({path:path.join(out,'truncation-retry-zh.png')});
+    project.workflow={...project.workflow,status:'error',inference:{...project.workflow.inference,phase:'truncated',willRetry:false}};
+    await page.reload();
+    await page.getByTestId('truncation-failure').waitFor();
+    assert.match(await page.getByTestId('truncation-failure').innerText(),/已停止自动重试/);
+    await page.getByRole('button',{name:'切换为英文',exact:true}).click();
+    assert.match(await page.getByTestId('truncation-failure').innerText(),/Automatic retries have stopped/);
+  });
   await check("no browser exceptions or hardware actions", async () => {
     assert.deepEqual(errors, []);
     assert.equal(

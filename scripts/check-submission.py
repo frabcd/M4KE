@@ -44,6 +44,7 @@ SERVER_FILES = {
     'server/studio-review.mjs',
     'server/studio-schema.mjs',
     'server/studio-service.mjs',
+    'server/studio-output-budget.mjs',
     'server/studio-generation-diagnostics.mjs',
     'server/studio-request-constraints.mjs',
     'server/studio-skills.mjs',

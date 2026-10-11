@@ -17,6 +17,7 @@ const elapsed=computed(()=>{
 });
 const phase=computed(()=>{
   const p=workflow.value?.inference?.phase;
+  if(p==='truncated')return s.t('设计响应被截断','Design response was truncated');
   if(p==='generating')return s.t('正在构建设计','Building the design');
   if(p==='validating')return s.t('正在检查设计结构','Checking the design contract');
   if(p==='retrying')return s.t('根据错误反馈修正','Correcting from concrete feedback');
@@ -41,9 +42,11 @@ const outputs=[
     <div v-if="running" class="generation-activity" role="status" data-testid="generation-activity">
       <div class="activity-title"><span class="activity-dot"/><strong>{{phase}}</strong><span class="elapsed"><Clock3 :size="12"/>{{elapsed}}</span></div>
       <div class="activity-meta"><span>{{s.t('AI 正在处理你的设计','AI is working on your design')}}</span><span v-if="workflow?.inference?.outputCharacters">{{workflow.inference.outputCharacters.toLocaleString()}} {{s.t('字符已收到','characters received')}}</span></div>
+      <p v-if="workflow?.inference?.retryReason==='output-truncated'" data-testid="truncation-status">{{s.t('上一轮响应触及输出上限，未形成完整设计。','The previous response reached its output limit without a complete design.')}} <template v-if="workflow.inference.phase!=='truncated'">{{s.t('正在用更大的预算重试；仍需通过完整检查。','Retrying with a larger budget; all checks still apply.')}}</template></p>
+      <div v-if="workflow?.inference?.attempt" class="activity-meta"><span>{{s.t('生成尝试','Generation attempt')}} {{workflow.inference.attempt}}</span><span v-if="workflow.inference.tokenLimit">{{s.t('输出上限','Output limit')}} {{workflow.inference.tokenLimit.toLocaleString()}} tokens</span></div>
       <p>{{s.t('预览会在完整响应检查后出现。字数与等待时间不是完成百分比。','The preview appears after a complete response passes its contract checks. Time and received text are not completion percentages.')}}</p>
     </div>
-    <div v-else-if="workflow?.status==='error'" class="blueprint-error" role="status"><strong>{{s.t('这次尝试没有完成','This attempt did not finish')}}</strong><p>{{s.t('需求和当前作品已保留。请重试；详细原因可在处理记录中查看。','Your brief and current design are saved. Retry, or open the processing record for details.')}}</p></div>
+    <div v-else-if="workflow?.status==='error'" class="blueprint-error" role="status"><strong>{{s.t('这次尝试没有完成','This attempt did not finish')}}</strong><p v-if="workflow.inference?.phase==='truncated'" data-testid="truncation-failure">{{s.t('设计响应被截断，已停止自动重试。完整设计尚未通过检查。','Design output was truncated. Automatic retries have stopped; no complete design passed its checks.')}}</p><p>{{s.t('需求和当前作品已保留。请重试；详细原因可在处理记录中查看。','Your brief and current design are saved. Retry, or open the processing record for details.')}}</p></div>
     <div v-else-if="s.hasQuestions" class="blueprint-question"><strong>{{s.t('还差几个关键决定','A few decisions remain')}}</strong><p>{{s.t('回答左侧问题，然后继续。可自由补充，不必只选建议答案。','Answer the questions on the left, then continue. Your own answer is welcome.')}}</p></div>
     <section class="blueprint-outputs"><h3>{{s.t('你将得到什么','What you are building toward')}}</h3><div v-for="item in outputs" :key="item.en" class="blueprint-output"><span><component :is="item.icon" :size="18"/></span><div><strong>{{s.t(item.zh,item.en)}}</strong><small>{{s.t(item.detailZh,item.detailEn)}}</small></div><ArrowRight :size="14"/></div></section>
     <footer><Check :size="14"/><span>{{s.t('先预览，再确认。AI 不会替你批准制造。','Preview first. Confirm explicitly. AI never authorizes manufacturing for you.')}}</span></footer>

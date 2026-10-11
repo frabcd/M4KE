@@ -103,7 +103,7 @@ export type Workflow = {
   message: string;
   startedAt?: string;
   finishedAt?: string;
-  inference?: {phase:string;model?:string;attempt?:number;elapsedMs?:number;firstContentMs?:number|null;outputCharacters?:number};
+  inference?: {phase:string;model?:string;attempt?:number;elapsedMs?:number;firstContentMs?:number|null;outputCharacters?:number;tokenLimit?:number;retryReason?:string|null;previousTokenLimit?:number|null;willRetry?:boolean};
   repairLimit: number;
   jobId?: string;
   kitId?: string;
