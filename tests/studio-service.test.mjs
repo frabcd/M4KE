@@ -151,6 +151,32 @@ test('project progress exposes the truncation reason and larger retry budget',as
 });
 
 // Truncation recovery is an extra FORMAT attempt, not an unbounded engineering repair.
+test('geometry patch repeated truncation stops after one larger-budget recovery',async()=>{
+  const f=await fixture({doneReason:'length',reply:{updates:[{partId:'body',changes:{position:[0,0,5]}}]}});
+  try{
+    const res=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({request:'Repair toy',previousSpec:sample(),repairErrors:['Geometry fixture failed']})});
+    assert.equal(res.status,422);assert.match((await res.json()).error,/No further token-limit retry/);
+    assert.deepEqual(f.calls.map(c=>JSON.parse(c[2].body).options.num_predict),[4500,9000]);
+    const files=await readdir(path.join(f.root,'data/design-runs'));
+    const receipt=JSON.parse(await readFile(path.join(f.root,'data/design-runs',files.find(x=>x.endsWith('.json'))),'utf8'));
+    assert.equal(receipt.status,'rejected');assert.equal(receipt.designHash,null);
+  }finally{await f.close();}
+});
+
+test('geometry patch truncated on its second attempt receives the promised final recovery',async()=>{
+  const patch={updates:[{partId:'body',changes:{position:[0,0,5]}}]};
+  const f=await fixture({doneReason:n=>n===2?'length':'stop',reply:n=>n===1?{updates:[]}:patch});
+  try{
+    const res=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({request:'Repair toy',previousSpec:sample(),repairErrors:['Geometry fixture failed']})});
+    assert.equal(res.status,200);const result=await res.json();
+    assert.equal(result.metrics.attempts,3);
+    assert.deepEqual(f.calls.map(c=>JSON.parse(c[2].body).options.num_predict),[4500,4500,9000]);
+    assert.deepEqual(result.spec.parts[0].position,[0,0,5]);
+    assert.deepEqual(result.spec.requirements,sample().requirements);
+    const receipt=JSON.parse(await readFile(path.join(f.root,'data/design-runs',result.metrics.runId+'.json'),'utf8'));
+    assert.equal(receipt.generationMode,'model-geometry-patch');assert.equal(receipt.status,'accepted');
+  }finally{await f.close();}
+});
 test('one truncation plus an invalid complete draft can recover on bounded third attempt',async()=>{const f=await fixture({doneReason:n=>n===1?'length':'stop',reply:n=>n===2?{bad:true}:sample()});try{const res=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json',connection:'close'},body:JSON.stringify({request:'toy'})});assert.equal(res.status,200);assert.equal(f.calls.length,3);const third=JSON.parse(f.calls[2][2].body);assert.match(third.messages[0].content,/FORMAT REPAIR/);assert.equal((await res.json()).metrics.attempts,3);}finally{await f.close();}});
 
 test('truncation on second format attempt also gets exactly one final opportunity',async()=>{const f=await fixture({doneReason:n=>n===2?'length':'stop',reply:n=>n===1?{bad:true}:sample()});try{const res=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json',connection:'close'},body:JSON.stringify({request:'toy'})});assert.equal(res.status,200);assert.equal(f.calls.length,3);const payload=JSON.parse(f.calls[2][2].body);assert.equal(payload.options.num_ctx,65536);assert(Object.keys(payload.format.properties).indexOf('electrical')<Object.keys(payload.format.properties).indexOf('assembly'));}finally{await f.close();}});

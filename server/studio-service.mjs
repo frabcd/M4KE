@@ -444,7 +444,7 @@ export function createStudioService({root,getSettings,localFetch,getModels,body,
           errors.push(`Design output was truncated at its ${inferenceConfig.num_predict}-token limit. ${recovery?'Retry once with a larger bounded budget and compact complete JSON.':'No further token-limit retry is allowed.'} Preserve required design/electrical fields and checks; no CAD specification accepted.`);
           previousTokenLimit=inferenceConfig.num_predict;retryReason='output-truncated';
           if(onProgress)await onProgress({...progressContext,phase:'truncated',retryReason,previousTokenLimit,willRetry:Boolean(recovery)});
-          if(recovery){truncationRetried=true;inferenceConfig=recovery;if(!patchMode)maxFormatAttempts=3;}
+          if(recovery){truncationRetried=true;inferenceConfig=recovery;maxFormatAttempts=3;}
           await saveRun();
           if(recovery)continue;
           break;
