@@ -1,3 +1,5 @@
+import {inspectInitialDraft,architectureBindingIssues,admitGeneratedDesign} from './studio-generation-admission.mjs';
+export {inspectInitialDraft,architectureBindingIssues} from './studio-generation-admission.mjs';
 import {requestConstraintIssues, REQUEST_GUIDANCE} from './studio-request-constraints.mjs';
 import {geometryIntentIssues,nativeBuildFailureMessage} from './studio-generation-diagnostics.mjs';
 import {truncationRecovery} from './studio-output-budget.mjs';
@@ -59,31 +61,6 @@ export function csvCell(value){let text=String(value??'');if(/^[\s]*[=+\-@]/.tes
 /** Aggregate inexpensive initial-draft diagnostics before identities/physics freeze.
  * These are rejection reasons, never accepted evidence and never input repairs.
  */
-export function inspectInitialDraft(draft,catalog) {
-  const issues=[];let candidate=null;
-  if(Array.isArray(draft?.parts)&&draft.parts.length>24)issues.push('General Qwen designs are limited to 24 parts; larger source kits require their explicit route.');
-  try{candidate=validateDesignSpec(draft);}catch(error){issues.push(error.message);}
-  if(candidate)issues.push(...geometryIntentIssues(candidate));
-  try{issues.push(...electricalDraftIssues(draft));}catch{/* Structural validation above owns malformed data. */}
-  if(Array.isArray(draft?.parts)&&draft.parts.length<=48&&draft.parts.every(p=>p&&typeof p==='object')) {
-    try{issues.push(...generationCatalogIssues(candidate||draft,catalog));}catch{/* Malformed fields remain rejected, never silently accepted. */}
-  }
-  if(draft?.parts?.length&&(draft.physicsInputs?.driveMotors||draft.physicsInputs?.thresholdDbfs)&&!draft.electrical)
-    issues.push('Powered toys require the structured electrical block: component profiles, pin-to-pin connections, proposed terminalAnchors and supported control configuration. Prose wiring is not a complete design.');
-  if(draft?.parts?.length&&draft.physicsInputs?.thresholdDbfs&&draft.electrical&&!draft.electrical.control)
-    issues.push('Relative-loudness motion requires electrical.control bound to the wiring.');
-  // Screen only finite, in-range declared numbers. Missing/invalid inputs stay
-  // UNKNOWN in this diagnostic pass, not manufactured zero/default values.
-  const inputs={};
-  for(const [key,[min,max]] of Object.entries(PHYSICS_RANGES)){
-    const input=draft?.physicsInputs?.[key];
-    if(input&&Number.isFinite(input.value)&&input.value>=min&&input.value<=max&&['ASSUMED','USER','MANUFACTURER','MEASURED'].includes(input.basis)&&typeof input.source==='string'&&(key!=='driveMotors'||Number.isInteger(input.value)))inputs[key]=input;
-  }
-  if(draft?.parts?.length&&!draft.questions?.length)for(const check of engineeringChecks(inputs))if(check.status==='FAIL')
-    issues.push(`${check.id}: declared-input screening FAIL; observed ${JSON.stringify(check.observed)}; required ${check.required}. Correct the unaccepted architecture, preserve user targets and source facts; this is not physical evidence.`.slice(0,1000));
-  return {candidate,issues:[...new Set(issues)].slice(0,12)};
-}
-
 /** Freeze a model-selected conditional architecture, never a developer design. */
 export function architectureBoundSchema(base,plan){
   const schema=structuredClone(base);if(!plan)return schema;
@@ -94,15 +71,7 @@ export function architectureBoundSchema(base,plan){
   else schema.properties.parts.items.properties.shape.anyOf=alternatives.filter(x=>!x.properties?.type?.enum?.includes('catalog'));
   return schema;
 }
-export function architectureBindingIssues(spec,plan){
-  if(!plan)return [];
-  const stable=value=>JSON.stringify(value,(_k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
-  const issues=[];
-  if(stable(spec.physicsInputs||{})!==stable(plan.physicsInputs))issues.push('Full design changed the model-selected architecture physicsInputs. Preserve the accepted conditional plan exactly; do not lower targets, change ratings or drop failed inputs.');
-  const actual=[...new Set(spec.parts.filter(p=>p.shape.type==='catalog').map(p=>p.shape.catalogId))].sort(),expected=[...plan.selectedCatalogIds].sort();
-  if(stable(actual)!==stable(expected))issues.push('Full design catalog selections differ from the accepted model architecture. Use its exact selected native identities; no undeclared replacement or silent source omission.');
-  return issues;
-}
+
 
 export function tutorialHTML(spec,verification,hash,images={},electrical=null) {
   const ordered=[],remaining=[...spec.assembly],done=new Set();
@@ -458,20 +427,9 @@ export function createStudioService({root,getSettings,localFetch,getModels,body,
           attempts.at(-1).normalizations=normalized.changes;
           clarification=clarificationFromDraft(failedDraft);
           if(clarification){spec=clarification.spec;break;}
-          const requestIssues=requestConstraintIssues(data.request,failedDraft);if(requestIssues.length)throw new Error(requestIssues.join('; '));
-          const inspected=inspectInitialDraft(failedDraft,catalog);
-          if(inspected.issues.length)throw new Error(inspected.issues.join("; ").slice(0,3900));
-          const candidate=inspected.candidate;
-          if(data.requirePartExplanations&&candidate.parts.some(p=>!p.explanation))throw new Error('Every new part needs explanation:{purpose,placementReason,selectionReason}; this is design intent, not evidence.');
-          if(data.preserveDecisions&&candidate.parts.some(p=>JSON.stringify(p)!==JSON.stringify(previousSpec.parts.find(old=>old.id===p.id))&&!p.explanation))throw new Error('Every changed or added candidate part needs an explanation of purpose, placement and selection. Do not invent evidence.');
-          const bindingIssues=architectureBindingIssues(candidate,architecturePlan);if(bindingIssues.length)throw new Error(bindingIssues.join("; "));
-          if(candidate.questions.length&&candidate.parts.length)throw new Error('Essential questions require clarification-only JSON: parts:[] and assembly:[]. Do not construct a design from unanswered decisions.');
-          if(previousSpec&&data.repairErrors?.length&&!candidate.questions.length){
-            validateRepair(previousSpec,candidate);
-            if(designHash(candidate)===designHash(previousSpec))throw new Error('Repair returned the identical failed design. Change the geometry responsible for the reported failure, keeping requirements, input assumptions and verification targets unchanged. Repeating the failed draft is not a repair.');
-          }
-          if(data.preserveDecisions&&previousSpec&&!candidate.questions.length)validateUserRefinement(previousSpec,candidate);
-          spec=candidate;break;
+          const admitted=admitGeneratedDesign(failedDraft,{request:data.request,catalog,requirePartExplanations:data.requirePartExplanations,previousSpec,preserveDecisions:data.preserveDecisions,repairErrors:data.repairErrors,architecturePlan});
+          if(!admitted.spec)throw new Error(admitted.issues.map(i=>i.message).join('; '));
+          spec=admitted.spec;break;
         }catch(error){
           spec=null;errors.push(error.message);retryReason='validation-failed';previousTokenLimit=null;
           // Do not spend another full CAD response repeating a disproven power or

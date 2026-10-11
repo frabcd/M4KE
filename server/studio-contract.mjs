@@ -19,7 +19,7 @@ export const PHYSICS_RANGES = Object.freeze(Object.fromEntries(Object.entries({
   materialModulusMPa: [1, 1000000], materialAllowableMPa: [0.1, 10000], structuralSafetyFactor: [1, 20], maxDeflectionMm: [0.001, 100],
 }).map(([key, bounds]) => [key, Object.freeze(bounds)])));
 
-function fail(path, message) { throw new Error(`${path}: ${message}`); }
+function fail(path, message) { throw Object.assign(new Error(`${path}: ${message}`),{code:'DESIGN_CONTRACT',validationPath:path}); }
 function object(value, keys, path) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || ![Object.prototype, null].includes(Object.getPrototypeOf(value))) fail(path, 'expected a plain object');
   for (const key of Reflect.ownKeys(value)) {
