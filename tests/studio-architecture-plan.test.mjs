@@ -111,10 +111,35 @@ test('partial numeric plan retry receives exact omitted keys and keeps the compl
   assert.equal(result.record.attempts[0].content,JSON.stringify(partial));assert.equal(result.record.attempts[1].content,JSON.stringify(good()));assert.deepEqual(result.plan.physicsInputs,good().physicsInputs);
 });
 
+test('architecture truncation gets one context-bounded recovery with actual per-attempt budgets',async()=>{
+  const calls=[];
+  const result=await planArchitecture(args(async(_url,_route,opts,timeout)=>{
+    calls.push({payload:JSON.parse(opts.body),timeout});return {...answer(good()),done_reason:calls.length===1?'length':'stop',prompt_eval_count:12000};
+  }));
+  assert.equal(result.status,'ACCEPTED');assert.deepEqual(calls.map(c=>c.payload.options.num_predict),[3000,3360]);
+  assert.deepEqual(calls.map(c=>c.timeout),[300000,600000]);assert.deepEqual(calls[0].payload.format,calls[1].payload.format);
+  assert.deepEqual(result.record.attempts.map(a=>a.inferenceConfig.num_predict),[3000,3360]);assert.equal(result.record.attempts[0].promptEvalCount,12000);
+});
+
 test('model failure, truncation and transport remain bounded; no fixed-plan fallback',async()=>{
   let n=0;const unchanged=await planArchitecture(args(async()=>{n++;return answer(bad());}));assert.equal(n,2);assert.equal(unchanged.status,'FAILED');assert.equal(unchanged.plan,null);assert.equal(unchanged.record.planHash,null);
   n=0;const truncated=await planArchitecture(args(async()=>{n++;return {...answer(good()),done_reason:'length'};}));assert.equal(n,2);assert.equal(truncated.status,'FAILED');assert.ok(truncated.record.errors.every(x=>x.includes('truncated')));
   n=0;const transport=await planArchitecture(args(async()=>{n++;throw Object.assign(Error('Synthetic transport failure'),{code:'ECONNRESET'});}));assert.equal(n,1);assert.equal(transport.status,'FAILED');assert.equal(transport.record.attempts[0].code,'ECONNRESET');
+});
+
+test('architecture cancellation while inference completes cannot accept the returned plan',async()=>{
+  const controller=new AbortController();let calls=0;
+  const result=await planArchitecture({...args(async()=>{calls++;controller.abort();return answer(good());}),signal:controller.signal});
+  assert.equal(calls,1);assert.equal(result.status,'FAILED');assert.equal(result.plan,null);assert.equal(result.record.planHash,null);assert.equal(result.record.cancelled,true);
+});
+
+test('architecture with exhausted context stops and oversized output is retained only as bounded diagnostics',async()=>{
+  let calls=0;
+  const exhausted=await planArchitecture(args(async()=>{calls++;return {...answer(good()),done_reason:'length',prompt_eval_count:13000};}));
+  assert.equal(calls,1);assert.equal(exhausted.status,'FAILED');assert.equal(exhausted.plan,null);assert.match(exhausted.record.errors[0],/No further token-limit retry/);
+  const oversized=await planArchitecture(args(async()=>({message:{content:JSON.stringify(good())+' '.repeat(40000)},done_reason:'stop'})));
+  assert.equal(oversized.status,'FAILED');assert.equal(oversized.plan,null);
+  assert(oversized.record.attempts.every(a=>a.content.length===40000&&a.contentTruncated));
 });
 
 test('model clarification is returned without geometry and cancellation does not invoke inference',async()=>{

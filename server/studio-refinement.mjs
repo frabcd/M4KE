@@ -4,6 +4,7 @@ import {randomUUID,createHash} from 'node:crypto';
 import {validateDesignSpec,designHash} from './studio-contract.mjs';
 import {validateRepair} from './studio-repair.mjs';
 import {OLLAMA_DESIGN_SCHEMA} from './studio-schema.mjs';
+import {truncationRecovery} from './studio-output-budget.mjs';
 
 const PRINTED=['position','rotation','color','material','shape','fillet','holes','pockets','explanation'];
 const SOURCE=['position','rotation','explanation'];
@@ -96,23 +97,33 @@ export function buildRefinementMessages({project,context,message,history=[],skil
  * attempt and the parent hash are retained; nothing is applied in this function. */
 export async function generateRefinement({root,project,context,message,history,settings,installed,skills,infer,signal,inspect}){
   const runId=randomUUID(),started=Date.now(),at=new Date().toISOString(),schema=buildRefinementSchema(project.spec),attempts=[],errors=[];
-  const inferenceConfig={think:false,temperature:0.2,num_ctx:32768,num_predict:3000,timeoutMs:240000};
+  let inferenceConfig={think:false,temperature:0.2,num_ctx:32768,num_predict:3000,timeoutMs:240000};
   let result=null,failedReply=null;
   const folder=path.join(root,'data','design-runs');await mkdir(folder,{recursive:true});
   async function save(status){
-    const record={runId,at,status,generationMode:'model-user-refinement',parentDesignHash:designHash(project.spec),projectId:project.id,revision:project.revision,selectedPartIds:context.selectedPartIds,model:settings.model,modelDigest:installed.digest||null,skillHashes:{refine:skills.hashes.refine},outputSchemaHash:hash(JSON.stringify(schema)),inferenceConfig,request:message,attempts,errors,designHash:result?.spec?designHash(result.spec):null,elapsedMs:Date.now()-started};
+    const record={runId,at,status,cancelled:Boolean(signal?.aborted),generationMode:'model-user-refinement',parentDesignHash:designHash(project.spec),projectId:project.id,revision:project.revision,selectedPartIds:context.selectedPartIds,model:settings.model,modelDigest:installed.digest||null,skillHashes:{refine:skills.hashes.refine},outputSchemaHash:hash(JSON.stringify(schema)),inferenceConfig,request:message,attempts,errors,designHash:result?.spec?designHash(result.spec):null,elapsedMs:Date.now()-started};
     const file=path.join(folder,runId+'.json');await writeFile(file+'.tmp',JSON.stringify(record,null,2));await rename(file+'.tmp',file);return record;
   }
   await save('running');
   try{
     for(let attempt=0;attempt<2;attempt++){
+      signal?.throwIfAborted();
       const messages=buildRefinementMessages({project,context,message,history,skill:skills.refine,validationErrors:errors,failedReply});
       const answer=await infer(settings.endpoint,'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:settings.model,stream:false,think:false,format:schema,messages,options:{temperature:inferenceConfig.temperature,num_ctx:inferenceConfig.num_ctx,num_predict:inferenceConfig.num_predict}})},inferenceConfig.timeoutMs,signal);
       const content=String(answer.message?.content||'');
-      attempts.push({attempt:attempt+1,content:content.slice(0,40000),evalCount:answer.eval_count,promptEvalCount:answer.prompt_eval_count??null,doneReason:answer.done_reason,inferenceMetrics:answer.inferenceMetrics||null});
+      attempts.push({attempt:attempt+1,inferenceConfig:{...inferenceConfig},content:content.slice(0,40000),contentTruncated:content.length>40000,evalCount:answer.eval_count,promptEvalCount:answer.prompt_eval_count??null,doneReason:answer.done_reason,inferenceMetrics:answer.inferenceMetrics||null});
       await save('running');
+      signal?.throwIfAborted();
+      if(answer.done_reason==='length'){
+        const recovery=attempt===0?truncationRecovery(inferenceConfig,answer.prompt_eval_count):null;
+        errors.push(`Refinement was truncated at ${inferenceConfig.num_predict} tokens. ${recovery?'Retry once with a larger bounded patch budget; unchanged design stays preserved.':'No further token-limit retry is allowed.'}`);
+        if(recovery)inferenceConfig=recovery;
+        await save('running');
+        if(recovery)continue;
+        break;
+      }
       try{
-        if(answer.done_reason==='length'||content.length>40000)throw new Error('Refinement was truncated. Return a concise patch, or route complex changes to redesign; do not drop part changes.');
+        if(content.length>40000)throw new Error('Refinement exceeds the 40000-character response bound. Return a concise complete patch; do not drop part changes.');
         failedReply=JSON.parse(content.replace(/^\s*```(?:json)?\s*/i,'').replace(/\s*```\s*$/,''));
         const candidate=applyRefinementResponse(project.spec,failedReply);
         if(candidate.action==='patch'){
@@ -120,11 +131,14 @@ export async function generateRefinement({root,project,context,message,history,s
           if(!candidate.effects.length)throw new Error('This changes explanation text only. A design modification must change geometry, placement, material or colour. Use read-only Ask for explanations.');
           const issues=await inspect(candidate.spec);if(issues.length)throw new Error(issues.join('; ').slice(0,4000));
         }
+        signal?.throwIfAborted();
         result=candidate;break;
       }catch(error){errors.push(error.message);await save('running');}
     }
-  }catch(error){errors.push(error.message);await save('rejected');throw error;}
+    signal?.throwIfAborted();
+  }catch(error){result=null;errors.push(error.message);await save('rejected');throw error;}
   const record=await save(result?(result.action==='patch'?'accepted':result.action==='questions'?'clarification':'delegated'):'rejected');
+  if(signal?.aborted){result=null;errors.push('Refinement cancelled');await save('rejected');signal.throwIfAborted();}
   if(!result)fail(`Local model refinement failed after ${attempts.length} bounded attempts; diagnostic ${runId}: ${errors.at(-1)}`);
   return {...result,model:settings.model,metrics:{runId,elapsedMs:record.elapsedMs,attempts:attempts.length,evalCount:attempts.at(-1)?.evalCount,generationMode:record.generationMode,parentDesignHash:record.parentDesignHash},warnings:['Candidate intent only; unchanged design fields are preserved. Explicit confirmation and separate verification are required.']};
 }
