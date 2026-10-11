@@ -617,8 +617,8 @@
       "bytes": 5789
     },
     "server/studio-projects.mjs": {
-      "sha256": "22e0f442a15cdbd2bd78494276a86e7376d0c6b401407fb1701dee669361e5dd",
-      "bytes": 27296
+      "sha256": "6c5f9b0e4596b4d8fa3c6d5f8c2a77df62801ca52fb5fbd452b5901f774cd02f",
+      "bytes": 27851
     },
     "server/studio-refinement.mjs": {
       "sha256": "284946d4897c0105f8a74ed61c7b9928cb858a5a7dc55d09b873b63a365a3907",
@@ -1293,8 +1293,8 @@
       "bytes": 1429
     },
     "tests/studio-workspace.test.mjs": {
-      "sha256": "fea44025efbb144da359d803e002244fbdbcd63738e06e46aa63fd51f13bee88",
-      "bytes": 49628
+      "sha256": "2ce6b4164e13afd94b7477989f6480eed895f5a707f78d45f868d10e94a7bc76",
+      "bytes": 52227
     },
     "tests/submission_package_test.py": {
       "sha256": "726ed72e211decca2e1c32f98c704136323a5ae65ae078c2079bd58ad55230b2",
@@ -1349,8 +1349,8 @@
       "bytes": 11712
     },
     "texting.txt": {
-      "sha256": "5e6b4df54032cc7a3ff32e13b127783a8ec732259623078f17c1f1326e16b899",
-      "bytes": 28257
+      "sha256": "d18b0a25f1e529eb3359d8d488cde92fa9eadc0ea7af93de72a458fccd6a97a3",
+      "bytes": 29956
     },
     "tsconfig.json": {
       "sha256": "5254b6412d77d8bcbcf50652402d4ee45a1379d3335cb3c155367e886961e51c",
