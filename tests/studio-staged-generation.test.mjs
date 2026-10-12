@@ -1,7 +1,32 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {mkdtemp}from'node:fs/promises';import {tmpdir}from'node:os';import path from'node:path';import {randomUUID}from'node:crypto';
 import {createGenerationCheckpointStore,generationIdentity,hashGenerationValue}from'../server/studio-generation-checkpoints.mjs';
 import {runStagedGeneration}from'../server/studio-staged-generation.mjs';import {validateDesignSpec}from'../server/studio-contract.mjs';import {plan,readiness,payload}from'./helpers/staged-generation-fixture.mjs';
+import {assertGenerationSchema} from '../server/studio-generation-stages.mjs';
+import {ollamaProjection} from '../server/studio-schema.mjs';
 const response=v=>({content:JSON.stringify(v),doneReason:'stop',metrics:{evalCount:1}});
+test('later-stage decoder permits its payload or questions, never a ready-only response',async()=>{
+ const c=await setup(1),base=c.infer,seen=[];
+ c.infer=async args=>{
+  const normal=await base(args);
+  // This runner fixture otherwise uses a color outside the decoder's fixed palette.
+  if(args.unit.kind==='part'){
+   const decoded=JSON.parse(normal.content);for(const part of decoded.items)part.color='#808080';normal.content=JSON.stringify(decoded);
+  }
+  assertGenerationSchema(JSON.parse(normal.content),args.schema);
+  if(args.unit.key!=='readiness'){
+   seen.push(args.unit.kind);
+   for(const schema of [args.schema,ollamaProjection(args.schema)]){
+    assertGenerationSchema(JSON.parse(normal.content),schema);
+    assert.throws(()=>assertGenerationSchema(readiness(),schema),/no permitted shape/);
+    assertGenerationSchema({...readiness(),status:'questions',questions:[{id:'q',question:'Confirm an essential input?'}]},schema);
+    assert.throws(()=>assertGenerationSchema({...readiness(),status:'questions'},schema));
+   }
+  }
+  return normal;
+ };
+ assert.equal((await runStagedGeneration(c)).status,'accepted');
+ assert.ok(seen.includes('plan'));assert.ok(seen.includes('part'));assert.ok(seen.includes('metadata'));assert.ok(seen.includes('assembly'));
+});
 async function setup(n=5){const root=await mkdtemp(path.join(tmpdir(),'m4ke-runner-'));const contextSnapshot={sources:{catalogIds:[],libraryHashes:[]}},identity=generationIdentity({projectId:randomUUID(),request:'fixture',answers:[],model:{digest:'a'},skillHash:'b',schemaHash:'c',sourceHash:'d',contextHash:hashGenerationValue(contextSnapshot)}),calls=[],p=plan(n);return {root,identity,contextSnapshot,store:createGenerationCheckpointStore({root}),calls,p,buildMessages:()=>[{role:'system',content:'Fixture upstream skill'}],infer:async({unit})=>{calls.push(unit.key);return response(unit.key==='readiness'?readiness():unit.key==='plan'?p:payload(p,unit));},admit:raw=>({spec:validateDesignSpec(raw),issues:[]})};}
 test('essential questions stop before plan, geometry or admission',async()=>{
  const c=await setup();let admitted=false;c.infer=async({unit})=>{c.calls.push(unit.key);return response({...readiness(),status:'questions',questions:[{id:'battery',question:'Which battery?'}]});};c.admit=()=>{admitted=true;throw Error('must not admit');};

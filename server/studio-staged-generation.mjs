@@ -1,6 +1,6 @@
 import {performance} from 'node:perf_hooks';
 import {parseGenerationJson} from './studio-generation-json.mjs';
-import {READINESS_SCHEMA,PLAN_SCHEMA,validateReadiness,validateGenerationPlan,partitionGeneration,schemaForGenerationUnit,validateGenerationUnit,assembleGeneration,dependentUnitKeys} from './studio-generation-stages.mjs';
+import {READINESS_SCHEMA,QUESTIONS_SCHEMA,PLAN_SCHEMA,validateReadiness,validateGenerationPlan,partitionGeneration,schemaForGenerationUnit,validateGenerationUnit,assembleGeneration,dependentUnitKeys} from './studio-generation-stages.mjs';
 import {descriptorFor,dependencyHashes,canResumeGeneration} from './studio-generation-checkpoints.mjs';
 
 const special=key=>({key,kind:key,ids:[],dependsOn:[],tokenLimit:key==='readiness'?1500:4000,timeoutMs:key==='readiness'?180000:300000});
@@ -25,7 +25,7 @@ export async function runStagedGeneration({identity,contextSnapshot,store,infer,
     const timeout=AbortSignal.timeout(reservation.timeoutMs),combined=signal?AbortSignal.any([signal,timeout]):timeout,start=performance.now();let settled=false;
     try{
       await progress(unit.kind,{attempt:3-remainingAttempts(unit.key)});combined.throwIfAborted();
-      const response=await infer({unit,schema:unit.key==='readiness'?schema:{anyOf:[schema,READINESS_SCHEMA]},messages,config:{numPredict:unit.tokenLimit,timeoutMs:reservation.timeoutMs,numCtx:65536},signal:combined,onProgress:()=>{}});
+      const response=await infer({unit,schema:unit.key==='readiness'?schema:{anyOf:[schema,QUESTIONS_SCHEMA]},messages,config:{numPredict:unit.tokenLimit,timeoutMs:reservation.timeoutMs,numCtx:65536},signal:combined,onProgress:()=>{}});
       combined.throwIfAborted();
       const outcome=response.doneReason==='length'?'length':'stop';await h.settle(reservation.reservationId,{elapsedMs:performance.now()-start,outcome,evalCount:response.metrics?.evalCount??null,promptEvalCount:response.metrics?.promptEvalCount??null});settled=true;
       if(outcome==='length')throw Object.assign(stopped('Truncated unit '+unit.key),{truncated:true});

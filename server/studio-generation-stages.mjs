@@ -12,9 +12,10 @@ const text={type:'string',minLength:1,maxLength:2000};
 const bool={type:'boolean'},nullable=s=>({anyOf:[s,{type:'null'}]});
 // Decoder and host share the cross-field invariant; never repair status after
 // generation or discard questions to force an otherwise inconsistent pass.
+export const QUESTIONS_SCHEMA=obj({status:{const:'questions'},requirements:D.requirements,assumptions:D.assumptions,unknowns:D.unknowns,questions:{...D.questions,minItems:1,maxItems:3}});
 export const READINESS_SCHEMA={anyOf:[
   obj({status:{const:'ready'},requirements:D.requirements,assumptions:D.assumptions,unknowns:D.unknowns,questions:{...D.questions,maxItems:0}}),
-  obj({status:{const:'questions'},requirements:D.requirements,assumptions:D.assumptions,unknowns:D.unknowns,questions:{...D.questions,minItems:1,maxItems:3}}),
+  QUESTIONS_SCHEMA,
 ]};
 const identity={anyOf:[obj({type:{enum:['box','cylinder','union']}}),obj({type:{const:'catalog'},catalogId:id}),obj({type:{const:'library'},sourceSha256:{type:'string',pattern:'^[a-f0-9]{64}$'}})]};
 export const PLAN_SCHEMA=obj({title:D.title,description:D.description,units:D.units,requirements:D.requirements,assumptions:D.assumptions,unknowns:D.unknowns,
