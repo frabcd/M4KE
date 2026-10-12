@@ -2,7 +2,18 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import * as service from '../server/studio-staged-service.mjs';
 import {loadStudioSkills,buildDesignMessages} from '../server/studio-skills.mjs';
 import {PLAN_SCHEMA} from '../server/studio-generation-stages.mjs';
+import {plan,readiness} from './helpers/staged-generation-fixture.mjs';
 const build=args=>(service.buildStagedMessages??(({contextSnapshot})=>contextSnapshot.messages))(args);
+
+test('part-stage context specifies the real unit wrapper and preserves the frozen plan',async()=>{
+ const c=await fixture(),p=plan(1),state={plan:p,readiness:readiness()},before=JSON.stringify(state);
+ const messages=build({unit:{kind:'part',ids:['p0']},contextSnapshot:c,state}),out=JSON.parse(messages[1].content).stageOutputContract;
+ assert.equal(out.wrapper,'items');assert.deepEqual(out.assignedIds,['p0']);
+ for(const field of ['id','shape','position','rotation'])assert.ok(out.requiredItemFields.includes(field));
+ assert.deepEqual(out.explanationFields,['purpose','placementReason','selectionReason']);
+ assert.match(messages[0].content,/Do not reopen delegated type, color, scale or detail preferences/);
+ assert.equal(JSON.stringify(state),before);
+});
 
 test('plan output structure reaches the model and disclosed preferences stay delegated',async()=>{
  const c=await fixture(),before=JSON.stringify(c),messages=build({unit:{kind:'plan'},contextSnapshot:c,state:{}}),data=JSON.parse(messages[1].content);

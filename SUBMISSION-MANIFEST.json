@@ -677,8 +677,8 @@
       "bytes": 9007
     },
     "server/studio-staged-service.mjs": {
-      "sha256": "313330769997d573af774bc031ad917fc9957952452e7d639a2a8c56455dd356",
-      "bytes": 14852
+      "sha256": "7bf62f2d0f91c144b028d05d2d1ee50384c9bed05bfce8205f3dd64f993193c4",
+      "bytes": 15921
     },
     "server/studio-usability.mjs": {
       "sha256": "26af567ba1c7098927aa3f942b4772dce2cf5d734bc842cbec040999026be16f",
@@ -1337,8 +1337,8 @@
       "bytes": 53679
     },
     "tests/studio-staged-context.test.mjs": {
-      "sha256": "a983001a4f00f8c4a8b250257fb1f135e1734889db5f0ad0c4c4c137879835b6",
-      "bytes": 8339
+      "sha256": "490e098ea748ec6d5f738ce3266e8cfa51e57c51f16fef5be827eb5bfe13b45e",
+      "bytes": 9176
     },
     "tests/studio-staged-generation.test.mjs": {
       "sha256": "c456b2c63894a0c10f2384df22daa108fa30a85bcd292ec124ebf4e8fefc6a42",
