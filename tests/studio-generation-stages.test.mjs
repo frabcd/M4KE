@@ -25,6 +25,13 @@ test('readiness rejects geometry, contradictory status and excess questions',()=
   assert.throws(()=>validateReadiness({...readiness(),status:'questions'}));
   assert.throws(()=>validateReadiness({...readiness(),status:'questions',questions:Array.from({length:4},(_,i)=>({id:'q'+i,question:'Which?'}))}));
 });
+test('proposal ID rosters map exactly to stored plan without accepting full-design prose',()=>{
+ const p=plan();p.buildItems=['mount-screws'];p.verificationRequests=['bed-envelope'];const raw=proposal(p),context={readiness:readiness()};
+ assert.deepEqual(raw.buildItemIds,p.buildItems);assert.deepEqual(raw.verificationIds,p.verificationRequests);
+ const stored=validateGenerationProposal(raw,context);assert.deepEqual(stored,p);assert.equal(stored.verificationIds,undefined);
+ assert.throws(()=>validateGenerationProposal({...raw,verificationRequests:['bed-envelope']},context),/unsupported key/);
+ assert.throws(()=>validateGenerationProposal({...raw,verificationIds:['Check all parts fit the printer.']},context),/no permitted shape/);
+});
 test('plan enforces immutable metadata, references and global limits',()=>{
   assert.deepEqual(validateGenerationPlan(plan(),{readiness:readiness()}),plan());
   for(const mutate of [p=>p.parts.push(p.parts[0]),p=>p.requirements[0].text='changed',p=>p.assembly[0].partIds=['missing'],p=>p.parts[0].identity={type:'catalog',catalogId:'unadmitted'}]){

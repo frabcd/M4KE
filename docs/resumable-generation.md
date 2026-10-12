@@ -163,3 +163,9 @@ planning; original bounds/frame and all distinct fields remain, with full origin
 records in later stages and the hash-bound checkpoint. Real context replay with
 retry diagnostic fits65094bytes under the unchanged65536-byte guard. Linux source
 regression658 passed,20 skipped,0 failed. End-to-end car acceptance remains pending.
+
+The proposal names its optional ID rosters `buildItemIds` and `verificationIds`
+to distinguish them from detailed final-design objects. The host maps these
+rosters exactly to the unchanged stored-plan contract. Prose checks and duplicate
+part/supply identities still reject. This is a schema-guidance fix, not automatic
+creation of verification criteria or proof of native CAD/physical acceptance.

@@ -197,8 +197,8 @@
       "bytes": 9115
     },
     "docs/resumable-generation.md": {
-      "sha256": "2bfab888bcead6fa141f6f940d1928a41dd1c39ba91814d6651ea9410e516d7e",
-      "bytes": 12008
+      "sha256": "d4ce32bf6fd9c748474f95a6914b725d770a4b5d86ba1a0a353fc6e560e0b2e5",
+      "bytes": 12407
     },
     "docs/skill-integration-handoff.md": {
       "sha256": "e5001fbce2ae7a527a49585066e63e1f44937fbef58eeff098baae618e0197a9",
@@ -581,8 +581,8 @@
       "bytes": 1956
     },
     "server/studio-generation-stages.mjs": {
-      "sha256": "9cf45adf6f3e70a2e37ddd31cb676b85ec758e0d4e22d59c5ae39683295f948f",
-      "bytes": 14541
+      "sha256": "ac84a4df0afd20bbe331364980cd3c36d07238ef393fe4d36114061e798bb48b",
+      "bytes": 14721
     },
     "server/studio-http.mjs": {
       "sha256": "906a3b463cf390a1f4165cb7d48aeb9108b6c9ba9559225510bb78710de171e6",
@@ -677,8 +677,8 @@
       "bytes": 9407
     },
     "server/studio-staged-service.mjs": {
-      "sha256": "20bb0181149c6a7353192d6ac8affb5951c58a277223bb1097c2375e645e8b5b",
-      "bytes": 17836
+      "sha256": "3fa3d6882e01794180b6160b209df5df65fd204928ec60b253d7064bfbf26fba",
+      "bytes": 17883
     },
     "server/studio-usability.mjs": {
       "sha256": "26af567ba1c7098927aa3f942b4772dce2cf5d734bc842cbec040999026be16f",
@@ -1041,8 +1041,8 @@
       "bytes": 3105
     },
     "tests/helpers/staged-generation-fixture.mjs": {
-      "sha256": "071ba565b332b2ed60c1fa5ffa71e520974339dcc542b893890251d40f75d0f5",
-      "bytes": 1535
+      "sha256": "49d8708b2e3434229225c0a27ddea2be5667dd762d2a0fdd3d648c2e79233463",
+      "bytes": 1625
     },
     "tests/hole-depth.test.mjs": {
       "sha256": "32045807a1ac164c9ccc82643e59b50bbce3a70a339edd0562728dfbaffbfb1c",
@@ -1253,8 +1253,8 @@
       "bytes": 1149
     },
     "tests/studio-generation-stages.test.mjs": {
-      "sha256": "a31befe0e28ae1c20905aba8799159a4d91bb353631abd98ee253a2dcc127f37",
-      "bytes": 9122
+      "sha256": "7d821fce096744a629a898f2b7af87e8e28f3f5fbc1760a905e1db2d0bc1e18c",
+      "bytes": 9865
     },
     "tests/studio-generation-validation.test.mjs": {
       "sha256": "6908e1e6b7bf67f87adea14bed2102879586b52828e559a86c29980ec8bb8dac",
@@ -1433,8 +1433,8 @@
       "bytes": 11712
     },
     "texting.txt": {
-      "sha256": "824dc58efb1454e0897f4ca88c512eb434fbb687c610f0df6dc8783b4cf02c05",
-      "bytes": 47447
+      "sha256": "bc4647454238e7e44ec19306251be70e8394c8cc88a154dc42adce558e340562",
+      "bytes": 48600
     },
     "tsconfig.json": {
       "sha256": "5254b6412d77d8bcbcf50652402d4ee45a1379d3335cb3c155367e886961e51c",

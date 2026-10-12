@@ -27,8 +27,8 @@ export const PLAN_SCHEMA=obj({title:D.title,description:D.description,units:D.un
 
 // Intake text is already durable. Generate only new disclosures; the host copies
 // the exact originals into the same final plan contract, without model rewrites.
-const {requirements:_requirements,assumptions:_assumptions,unknowns:_unknowns,...planChoices}=PLAN_SCHEMA.properties;
-export const PLAN_PROPOSAL_SCHEMA=obj({...planChoices,newAssumptions:D.assumptions,newUnknowns:D.unknowns});
+const {requirements:_requirements,assumptions:_assumptions,unknowns:_unknowns,buildItems:buildItemIds,verificationRequests:verificationIds,...planChoices}=PLAN_SCHEMA.properties;
+export const PLAN_PROPOSAL_SCHEMA=obj({...planChoices,buildItemIds,verificationIds,newAssumptions:D.assumptions,newUnknowns:D.unknowns});
 export function planProposalSchema(readiness,sources){
   const schema=structuredClone(PLAN_PROPOSAL_SCHEMA);
   if(sources){
@@ -42,8 +42,8 @@ export function planProposalSchema(readiness,sources){
   return schema;
 }
 export function validateGenerationProposal(raw,context){
-  const {newAssumptions,newUnknowns,...choices}=safe(raw,planProposalSchema(context.readiness,context.sources));
-  return validateGenerationPlan({...choices,requirements:context.readiness.requirements,assumptions:[...context.readiness.assumptions,...newAssumptions],unknowns:[...context.readiness.unknowns,...newUnknowns]},context);
+  const {newAssumptions,newUnknowns,buildItemIds,verificationIds,...choices}=safe(raw,planProposalSchema(context.readiness,context.sources));
+  return validateGenerationPlan({...choices,buildItems:buildItemIds,verificationRequests:verificationIds,requirements:context.readiness.requirements,assumptions:[...context.readiness.assumptions,...newAssumptions],unknowns:[...context.readiness.unknowns,...newUnknowns]},context);
 }
 
 function fail(message){throw Object.assign(new Error(message),{code:'GENERATION_CONTRACT'});}
