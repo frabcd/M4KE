@@ -98,3 +98,28 @@ workflow. `stopConfirmed:false` requires operator follow-up; do not assume a
 timed-out HTTP request stopped the server. A receipt's `ARTIFACTS_REPORTED` means
 the API reported CAD files, not that their geometry was inspected. Connected
 preview and physical acceptance remain `NOT_TESTED` until separate examination.
+
+## Integration and verification
+
+Built on merged PR #10 (main `7bee938`), preserving the maintainer's compact
+recovery and cancelled/stale assistant persistence fixes. Windows source
+regressions: 619 passed, 21 skipped; typecheck and production build passed.
+Package tests: 13 passed. EN/ZH workflow, pricing and electrical browser fixtures
+passed. Thirty-three Linux checkpoint/runner/cancellation tests passed in a fresh
+temporary directory; no deployed data or inference was used. Nine supplier-CAD
+suites still require separately restored assets.
+
+Independent whole-branch review findings were reproduced and corrected in one
+pass; 78 targeted tests passed afterward. The two initially minor recovery/status
+findings were treated as important and fixed. No minor findings remain deferred.
+These results do not establish actual-model quality, speed, CAD/preview acceptance,
+physical fit, or completeness of supplier prices.
+
+Implementation rulings: checkpoints use a stricter single 4 MiB atomic state plus
+4 MiB context instead of the outer 32 MiB limit, so unusually verbose generations
+can stop earlier. The staged route freezes cached sourcing and includes verification
+planning in metadata; it performs no extra unbudgeted model research. Live supplier
+pricing follows admission through the existing connection. If the benchmark loses
+its start response, workflow ownership is unknown: report the observed status,
+leave stop unconfirmed, and request operator follow-up instead of cancelling an
+unidentified workflow. Actual performance acceptance remains pending.
