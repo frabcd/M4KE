@@ -15,6 +15,7 @@ test('opt-in staged HTTP workflow asks questions before geometry and never price
   const before=process.env.M4KE_STAGED_GENERATION;process.env.M4KE_STAGED_GENERATION='1';
   const f=await fixture({reply:{...stagedReady(),status:'questions',questions:[{id:'battery',question:'Which battery?'}]}});
   try{
+    assert.equal((await(await requestFixture(f.url+'/api/studio/capabilities')).json()).workflow.stagedGeneration,true);
     const p=await (await requestFixture(f.url+'/api/studio/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request:'fixture'})})).json();
     const started=await (await requestFixture(f.url+`/api/studio/projects/${p.id}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'design',expectedRevision:p.revision})})).json();assert.ok(started.workflow?.generationId,JSON.stringify(started));
     let end;for(let i=0;i<200;i++){end=await(await requestFixture(f.url+`/api/studio/projects/${p.id}`)).json();if(end.workflow.status!=='running')break;await new Promise(r=>setTimeout(r,10));}
