@@ -31,3 +31,6 @@ test('units reject missing extra duplicate IDs and changed poses; assembly uses 
   const spec=assembleGeneration(p,records);assert.deepEqual(spec.parts.map(x=>x.id),p.parts.map(x=>x.id));assert.equal(spec.electrical,undefined);
   assert.throws(()=>assembleGeneration(p,records.slice(1)));
 });
+import {READINESS_SCHEMA,assertGenerationSchema} from '../server/studio-generation-stages.mjs';
+import {ollamaProjection} from '../server/studio-schema.mjs';
+test('decoder readiness alternatives enforce the same status/question invariant as host',()=>{const question={id:'q1',question:'Which interface?'};for(const schema of [READINESS_SCHEMA,ollamaProjection(READINESS_SCHEMA)]){assert.doesNotThrow(()=>assertGenerationSchema(readiness(),schema));assert.doesNotThrow(()=>assertGenerationSchema({...readiness(),status:'questions',questions:[question]},schema));assert.throws(()=>assertGenerationSchema({...readiness(),status:'ready',questions:[question]},schema));assert.throws(()=>assertGenerationSchema({...readiness(),status:'questions',questions:[]},schema));}});

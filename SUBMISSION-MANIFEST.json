@@ -197,8 +197,8 @@
       "bytes": 9115
     },
     "docs/resumable-generation.md": {
-      "sha256": "9ceca9e1a79ee187887181097b10ecf2deb4ca2b5cb27a6ae220aced3fc25edf",
-      "bytes": 8303
+      "sha256": "f0d801cd2129c906a9a37c518195d5c063cce6246271e7122f14607511bf899e",
+      "bytes": 8854
     },
     "docs/skill-integration-handoff.md": {
       "sha256": "6a5cc06c55460ffa1fbd0c8fdd34e97c368763dd3e3874a084e2b9725a294614",
@@ -581,8 +581,8 @@
       "bytes": 1956
     },
     "server/studio-generation-stages.mjs": {
-      "sha256": "02a42a387330424fb27f25f459d08b7bee8fbe753739ca9af160a7a0d12ad49e",
-      "bytes": 10735
+      "sha256": "17da87a82db1918e050f93417255051fdb97cd31a7cffca15e3f20d374b8b92d",
+      "bytes": 11052
     },
     "server/studio-http.mjs": {
       "sha256": "906a3b463cf390a1f4165cb7d48aeb9108b6c9ba9559225510bb78710de171e6",
@@ -1253,8 +1253,8 @@
       "bytes": 1149
     },
     "tests/studio-generation-stages.test.mjs": {
-      "sha256": "7d4ff5f9481d25ad337a0adcd24c1e78166f33caa7ae78fd20230e6f277f2d8a",
-      "bytes": 3049
+      "sha256": "14ad3137e4ef9d5df8ea17faa49c8dc43ebd88bcc48a2b3280e65439770de0a6",
+      "bytes": 3817
     },
     "tests/studio-generation-validation.test.mjs": {
       "sha256": "6908e1e6b7bf67f87adea14bed2102879586b52828e559a86c29980ec8bb8dac",

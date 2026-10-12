@@ -10,7 +10,12 @@ const arr=(items,maxItems,minItems=0)=>({type:'array',items,minItems,maxItems});
 const id={type:'string',pattern:'^[A-Za-z][A-Za-z0-9_-]{0,63}$',minLength:1,maxLength:64};
 const text={type:'string',minLength:1,maxLength:2000};
 const bool={type:'boolean'},nullable=s=>({anyOf:[s,{type:'null'}]});
-export const READINESS_SCHEMA=obj({status:{enum:['ready','questions']},requirements:D.requirements,assumptions:D.assumptions,unknowns:D.unknowns,questions:{...D.questions,maxItems:3}});
+// Decoder and host share the cross-field invariant; never repair status after
+// generation or discard questions to force an otherwise inconsistent pass.
+export const READINESS_SCHEMA={anyOf:[
+  obj({status:{const:'ready'},requirements:D.requirements,assumptions:D.assumptions,unknowns:D.unknowns,questions:{...D.questions,maxItems:0}}),
+  obj({status:{const:'questions'},requirements:D.requirements,assumptions:D.assumptions,unknowns:D.unknowns,questions:{...D.questions,minItems:1,maxItems:3}}),
+]};
 const identity={anyOf:[obj({type:{enum:['box','cylinder','union']}}),obj({type:{const:'catalog'},catalogId:id}),obj({type:{const:'library'},sourceSha256:{type:'string',pattern:'^[a-f0-9]{64}$'}})]};
 export const PLAN_SCHEMA=obj({title:D.title,description:D.description,units:D.units,requirements:D.requirements,assumptions:D.assumptions,unknowns:D.unknowns,
   parts:arr(obj({id,kind:D.parts.items.properties.kind,position:D.parts.items.properties.position,rotation:D.parts.items.properties.rotation,source:nullable(text),identity,interfaceIntent:text}),24,1),
