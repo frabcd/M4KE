@@ -1,7 +1,7 @@
 import {isDeepStrictEqual as equal} from 'node:util';
 import {DESIGN_JSON_SCHEMA} from './studio-schema.mjs';
 import {ELECTRICAL_JSON_SCHEMA} from './studio-electrical.mjs';
-import {profileById} from './studio-electrical-profiles.mjs';
+import {profileById,ELECTRICAL_PROFILES} from './studio-electrical-profiles.mjs';
 import {validateGenerationItem} from './studio-contract.mjs';
 import {parseGenerationJson} from './studio-generation-json.mjs';
 
@@ -28,7 +28,7 @@ export const PLAN_SCHEMA=obj({title:D.title,description:D.description,units:D.un
 // Intake text is already durable. Generate only new disclosures; the host copies
 // the exact originals into the same final plan contract, without model rewrites.
 const {requirements:_requirements,assumptions:_assumptions,unknowns:_unknowns,buildItems:buildItemIds,verificationRequests:verificationIds,...planChoices}=PLAN_SCHEMA.properties;
-export const PLAN_PROPOSAL_SCHEMA=obj({...planChoices,buildItemIds,verificationIds,newAssumptions:D.assumptions,newUnknowns:D.unknowns});
+export const PLAN_PROPOSAL_SCHEMA=obj({...planChoices,parts:arr(obj({...PLAN_SCHEMA.properties.parts.items.properties,profileId:nullable({type:'string',enum:ELECTRICAL_PROFILES.map(p=>p.id)})}),24,1),electrical:nullable(obj({connections:PLAN_SCHEMA.properties.electrical.anyOf[0].properties.connections,control:bool})),buildItemIds,verificationIds,newAssumptions:D.assumptions,newUnknowns:D.unknowns});
 export function planProposalSchema(readiness,sources){
   const schema=structuredClone(PLAN_PROPOSAL_SCHEMA);
   if(sources){
@@ -37,13 +37,21 @@ export function planProposalSchema(readiness,sources){
     alternatives[2].properties.sourceSha256={type:'string',enum:[...sources.libraryHashes]};
     schema.properties.parts.items.properties.identity.anyOf=alternatives.filter((_,i)=>i===0||(i===1?sources.catalogIds:sources.libraryHashes).length);
   }
+  const part=schema.properties.parts.items,identities=part.properties.identity.anyOf;
+  const noncatalog=identities.filter(s=>s.properties.type.const!=='catalog');
+  part.anyOf=[{...structuredClone(part),properties:{...structuredClone(part.properties),identity:{anyOf:structuredClone(noncatalog)}}},...(sources?.catalogIds||[]).map(catalogId=>{
+    const profileIds=ELECTRICAL_PROFILES.filter(p=>p.catalogId===catalogId).map(p=>p.id);
+    return {...structuredClone(part),properties:{...structuredClone(part.properties),kind:{const:'purchased'},identity:obj({type:{const:'catalog'},catalogId:{const:catalogId}}),profileId:profileIds.length?nullable({type:'string',enum:profileIds}):{type:'null'}}};
+  })];
   schema.properties.newAssumptions.maxItems=40-(readiness?.assumptions?.length||0);
   schema.properties.newUnknowns.maxItems=40-(readiness?.unknowns?.length||0);
   return schema;
 }
 export function validateGenerationProposal(raw,context){
-  const {newAssumptions,newUnknowns,buildItemIds,verificationIds,...choices}=safe(raw,planProposalSchema(context.readiness,context.sources));
-  return validateGenerationPlan({...choices,buildItems:buildItemIds,verificationRequests:verificationIds,requirements:context.readiness.requirements,assumptions:[...context.readiness.assumptions,...newAssumptions],unknowns:[...context.readiness.unknowns,...newUnknowns]},context);
+  const {newAssumptions,newUnknowns,buildItemIds,verificationIds,parts,electrical,...choices}=safe(raw,planProposalSchema(context.readiness,context.sources));
+  const components=parts.filter(p=>p.profileId!==null).map(p=>({partId:p.id,profileId:p.profileId}));
+  if(!electrical&&components.length)fail('Electrical profiles require the electrical connection plan');
+  return validateGenerationPlan({...choices,parts:parts.map(({profileId,...p})=>p),electrical:electrical?{...electrical,components}:null,buildItems:buildItemIds,verificationRequests:verificationIds,requirements:context.readiness.requirements,assumptions:[...context.readiness.assumptions,...newAssumptions],unknowns:[...context.readiness.unknowns,...newUnknowns]},context);
 }
 
 function fail(message){throw Object.assign(new Error(message),{code:'GENERATION_CONTRACT'});}
@@ -89,7 +97,8 @@ export function validateGenerationPlan(raw,{readiness,sources={catalogIds:[],lib
   const refs=(xs,set)=>{unique(xs);if(xs.some(x=>!set.has(x)))fail('unknown reference');};
   for(const s of p.assembly){refs(s.partIds,ids);refs(s.requires,steps);}
   const visited=new Set(),active=new Set();function visit(id){if(active.has(id))fail('assembly cycle');if(visited.has(id))return;active.add(id);p.assembly.find(s=>s.id===id).requires.forEach(visit);active.delete(id);visited.add(id);}steps.forEach(visit);
-  if(p.parts.some(part=>!p.assembly.some(s=>s.partIds.includes(part.id))))fail('assembly coverage');
+  const uncovered=p.parts.filter(part=>!p.assembly.some(s=>s.partIds.includes(part.id))).map(part=>part.id);
+  if(uncovered.length)fail('assembly coverage: missing part IDs '+uncovered.join(', ')+'. Include every listed part in an assembly step.');
   if(p.electrical){const selected=new Set(p.electrical.components.map(c=>c.partId));refs([...p.electrical.components.map(c=>c.partId)],ids);unique(p.electrical.connections.map(c=>c.id));
     for(const component of p.electrical.components){
       const part=p.parts.find(part=>part.id===component.partId),profile=profileById(component.profileId);
@@ -101,7 +110,8 @@ export function validateGenerationPlan(raw,{readiness,sources={catalogIds:[],lib
       for(const end of [c.from,c.to]){const profile=profileById(p.electrical.components.find(component=>component.partId===end.partId).profileId);if(profile&&!profile.terminals.some(t=>t.id===end.terminal))fail('unknown profile terminal: '+end.partId+':'+end.terminal);}
     }}
   for(const k of ['buildItems','verificationRequests'])if(p[k])unique(p[k]);
-  if(p.buildItems?.some(x=>ids.has(x)))fail('build item collides with part');return p;
+  const collided=p.buildItems?.filter(x=>ids.has(x));
+  if(collided?.length)fail('build item collides with part: '+collided.join(', ')+'. Extra supply IDs must differ from part IDs.');return p;
 }
 export function partitionGeneration(p){
   const units=[];

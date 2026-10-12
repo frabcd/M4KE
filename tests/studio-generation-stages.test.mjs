@@ -42,12 +42,28 @@ test('staged ASCII ID decoder rejects prose while host retains maximum ID length
  const oversized={...proposal(plan()),buildItemIds:['a'.repeat(65)]};assert.doesNotThrow(()=>assertGenerationSchema(oversized,decoded));assert.throws(()=>validateGenerationProposal(oversized,{readiness:readiness()}));
  assert.equal(ollamaProjection(full).properties.buildItemIds.anyOf[0].items.pattern,undefined,'Legacy projection remains unchanged');
 });
+test('proposal binds electrical profile to its own part and decoder rejects unrelated catalog CAD',()=>{
+ const p=plan(2);p.parts.forEach(part=>part.kind='purchased');p.parts[0].identity={type:'catalog',catalogId:'pololu-lp6v-1098'};
+ p.electrical={components:[{partId:'p0',profileId:'pololu-lp6v-1098'},{partId:'p1',profileId:'battery-dc'}],connections:[],control:false};
+ const sources={catalogIds:['pololu-lp6v-1098','pololu-bracket-1086'],libraryHashes:[]},raw=proposal(p),decoder=ollamaProjection(planProposalSchema(readiness(),sources),{asciiIds:true});
+ assert.equal(raw.electrical.components,undefined);assert.equal(raw.parts[1].profileId,'battery-dc');assert.doesNotThrow(()=>assertGenerationSchema(raw,decoder));
+ assert.deepEqual(validateGenerationProposal(raw,{readiness:readiness(),sources}),p);
+ const wrong=structuredClone(raw);wrong.parts[1].identity={type:'catalog',catalogId:'pololu-bracket-1086'};assert.throws(()=>assertGenerationSchema(wrong,decoder));assert.throws(()=>validateGenerationProposal(wrong,{readiness:readiness(),sources}));
+ const dropped=structuredClone(raw);dropped.electrical=null;assert.throws(()=>validateGenerationProposal(dropped,{readiness:readiness(),sources}),/profiles require/);
+ const duplicated=structuredClone(raw);duplicated.electrical.components=p.electrical.components;assert.throws(()=>validateGenerationProposal(duplicated,{readiness:readiness(),sources}),/no permitted shape/);
+});
 test('plan enforces immutable metadata, references and global limits',()=>{
   assert.deepEqual(validateGenerationPlan(plan(),{readiness:readiness()}),plan());
   for(const mutate of [p=>p.parts.push(p.parts[0]),p=>p.requirements[0].text='changed',p=>p.assembly[0].partIds=['missing'],p=>p.parts[0].identity={type:'catalog',catalogId:'unadmitted'}]){
     const p=plan();mutate(p);assert.throws(()=>validateGenerationPlan(p,{readiness:readiness(),sources:{catalogIds:[],libraryHashes:[]}}));
   }
   assert.throws(()=>validateGenerationPlan(plan(25),{readiness:readiness()}));
+});
+test('planning diagnostics identify uncovered parts and colliding supply IDs for bounded retry',()=>{
+ const p=plan(2);p.assembly[0].partIds=['p0'];
+ assert.throws(()=>validateGenerationPlan(p,{readiness:readiness()}),/missing part IDs p1/);
+ p.assembly[0].partIds.push('p1');p.buildItems=['p1'];
+ assert.throws(()=>validateGenerationPlan(p,{readiness:readiness()}),/collides with part: p1/);
 });
 test('planning can disclose new assumptions and unknowns without erasing intake evidence',()=>{
   const ready={...readiness(),assumptions:['User delegated reversible material choice'],unknowns:['Physical fit has not been tested']};

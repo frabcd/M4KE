@@ -3,8 +3,8 @@ export const readiness=()=>({status:'ready',requirements:[{id:'R1',text:'Inspect
 export const plan=(count=1)=>({title:'Fixture',description:'Inert test fixture',units:'mm',...readinessFields(),parts:Array.from({length:count},(_,i)=>({id:'p'+i,kind:'printed',position:[i*10,0,0],rotation:[0,0,0],source:null,identity:{type:'box'},interfaceIntent:'Fixture only'})),assembly:[{id:'inspect',partIds:Array.from({length:count},(_,i)=>'p'+i),requires:[]}],electrical:null,buildItems:null,verificationRequests:null,physicsInputs:false});
 function readinessFields(){const {status,questions,...fields}=readiness();return fields;}
 export function proposal(p,r=readiness()){
- const {requirements,assumptions,unknowns,buildItems:buildItemIds,verificationRequests:verificationIds,...choices}=p;
- return {...choices,buildItemIds,verificationIds,newAssumptions:assumptions.slice(r.assumptions.length),newUnknowns:unknowns.slice(r.unknowns.length)};
+ const {requirements,assumptions,unknowns,parts,electrical,buildItems:buildItemIds,verificationRequests:verificationIds,...choices}=p;
+ return {...choices,parts:parts.map(part=>({...part,profileId:electrical?.components.find(c=>c.partId===part.id)?.profileId??null})),electrical:electrical?{connections:electrical.connections,control:electrical.control}:null,buildItemIds,verificationIds,newAssumptions:assumptions.slice(r.assumptions.length),newUnknowns:unknowns.slice(r.unknowns.length)};
 }
 export const part=(p)=>({id:p.id,name:p.id,kind:p.kind,material:'PLA',color:'#ABCDEF',position:p.position,rotation:p.rotation,shape:{type:'box',size:[10,10,10]}});
 export function payload(plan,unit){

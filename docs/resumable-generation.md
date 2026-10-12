@@ -176,3 +176,13 @@ unchanged and does not reintroduce large bounded string/hex grammars. A bounded
 exact122B diagnostic returned a valid ID in14.89s; this measures grammar execution
 only, not car-generation/native/visual acceptance. Actual HTTP fixtures check the
 sent schema, rather than relying only on an isolated projection test.
+
+Proposal parts carry nullable electrical `profileId` alongside their CAD identity.
+Catalog alternatives bind source CAD to the matching electrical profile or null;
+the host reconstructs the unchanged final electrical component roster. Connections
+and control remain model-selected. This removes duplicate part IDs and prevents
+an admitted bracket being proposed as battery electronics. Primitive/library
+geometry still has the existing unqualified-source/engineering boundaries.
+Uncovered assembly diagnostics now identify the exact missing part IDs. Complete
+source regression662 passed,20 skipped;22 browser workflow checks passed with a
+controlled delayed view-state restore. Real car acceptance remains pending.
