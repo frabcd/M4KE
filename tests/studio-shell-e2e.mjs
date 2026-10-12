@@ -1021,6 +1021,22 @@ try {
       // Laptop workbench: the model and primary controls must coexist without
       // depending on scrolling, and expanding conversation must remain bounded.
       await page.setViewportSize({ width: 1366, height: 768 });
+      const labelContrast = await page.evaluate(() => {
+        const rgb = value => value.match(/[\d.]+/g).slice(0, 3).map(Number);
+        const luminance = color => rgb(color).map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4)
+          .reduce((sum, v, i) => sum + v * [.2126, .7152, .0722][i], 0);
+        return ['.assistant-composer header .hint', '.property-grid dt'].map(selector => {
+          const element = document.querySelector(selector);
+          let parent = element, background;
+          do {
+            background = getComputedStyle(parent).backgroundColor;
+            parent = parent.parentElement;
+          } while (parent && (background === 'transparent' || background === 'rgba(0, 0, 0, 0)'));
+          const a = luminance(getComputedStyle(element).color), b = luminance(background);
+          return {selector, ratio:(Math.max(a,b)+.05)/(Math.min(a,b)+.05)};
+        });
+      });
+      for (const label of labelContrast) assert(label.ratio >= 4.5, `${label.selector} contrast ${label.ratio.toFixed(2)} must meet 4.5:1`);
       const laptop = await page.evaluate(() => {
         const rect = selector => {
           const r = document.querySelector(selector).getBoundingClientRect();

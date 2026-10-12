@@ -186,7 +186,7 @@ h4 {
 small,
 .hint {
   font-size: 11px;
-  color: #949494;
+  color: var(--muted);
   line-height: 1.6;
 }
 code {
@@ -1043,7 +1043,7 @@ td a {
   margin-top: 12px;
 }
 .property-grid dt {
-  color: #8f8f8f;
+  color: var(--muted);
 }
 .property-grid dd {
   margin: 0;
