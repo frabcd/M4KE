@@ -29,3 +29,6 @@ For requests such as "make this F1 car more beautiful", propose a coherent, boun
 - Keep the patch concise. Host checks, not your reply, decide whether a candidate can be offered. Never claim a successful edit merely because you wrote a nicer description.
 
 For an explicit user edit that changes an existing dimensional requirement, use `redesign` instead of pretending the old target still holds. Preserve requirement and verification-request IDs; do not drop checks. The studio shows target differences and requires separate user acknowledgment before applying. Automatic repair cannot change these newly proposed targets.
+
+## Adaptable form templates
+Choose a direction suited to the object: vehicle—unified body proportions around preserved wheel/motor clearances; enclosure—aligned seams, restrained colours and accessible battery/connectors; desk mechanism—balanced footprint and a visible retained axis. These are composition patterns, not replacement CAD kits. Preserve source components, mounts, walls, wiring and checks. Explain the visible change once without generic praise. Prefer purposeful changes over decoration. Form requests require actual geometry changes; colour cannot repair silhouette or assembly access. Use the existing explanation fields, not extra schema keys or model calls.

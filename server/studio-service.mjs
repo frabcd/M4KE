@@ -441,6 +441,10 @@ export function createStudioService({root,getSettings,localFetch,getModels,body,
         attempts.push({attempt:attempt+1,inferenceConfig:{...inferenceConfig},outputSchemaHash:digest(JSON.stringify(outputSchema)),evalCount:answer.eval_count,promptEvalCount:answer.prompt_eval_count??null,promptEvalDurationNs:answer.prompt_eval_duration??null,evalDurationNs:answer.eval_duration??null,totalDurationNs:answer.total_duration,inferenceMetrics:answer.inferenceMetrics||null,doneReason:answer.done_reason,content:String(answer.message?.content||'').slice(0,120000),contentTruncated:String(answer.message?.content||'').length>120000});
         await saveRun();
         if(signal?.aborted){inferenceError=new Error('Local design generation cancelled');errors.push(inferenceError.message);break;}
+        if(attempts.at(-1).contentTruncated){
+          errors.push('Design response exceeds the 120000-character capture limit. No specification accepted; shorten repeated prose while preserving required geometry, wiring and checks.');
+          break;
+        }
         if(answer.done_reason==='length'){
           const recovery=!truncationRetried&&attempt<2?truncationRecovery(inferenceConfig,answer.prompt_eval_count):null;
           errors.push(`Design output was truncated at its ${inferenceConfig.num_predict}-token limit. ${recovery?'Retry once with a larger bounded budget and compact complete JSON.':'No further token-limit retry is allowed.'} Preserve required design/electrical fields and checks; no CAD specification accepted.`);
