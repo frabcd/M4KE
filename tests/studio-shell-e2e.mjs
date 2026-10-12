@@ -219,6 +219,7 @@ let view = {
 };
 const clone = (x) => structuredClone(x);
 let inferenceSettings = {provider:'ollama',endpoint:'http://127.0.0.1:11434',model:'fixture-only'};
+let stagedConflict = false;
 const settingsWrites = [];
 await page.route('**/api/settings', async route => {
   if (route.request().method() === 'POST') { inferenceSettings=route.request().postDataJSON();settingsWrites.push(clone(inferenceSettings)); }
@@ -380,6 +381,13 @@ await page.route("**/api/studio/**", async (route) => {
     return respond(project);
   }
   if (p === `/api/studio/projects/${projectId}/run`) {
+    if(body.resumeGenerationId){
+      if(stagedConflict){project.workflow.canResume=false;return respond({error:'Generation inputs changed. Reload before starting over.'},409);}
+      assert.equal(body.expectedRevision,project.revision);
+      assert.equal(body.resumeGenerationId,project.workflow.generationId);
+      project.workflow={...project.workflow,status:'running',canResume:false,canCancel:true};
+      return respond(project,202);
+    }
     assert.equal(body.expectedRevision, project.revision);
     pending = body.mode;
     project = {
@@ -391,6 +399,12 @@ await page.route("**/api/studio/**", async (route) => {
       },
     };
     return respond(project, 202);
+  }
+  if(p === `/api/studio/projects/${projectId}/cancel`){
+    assert.equal(body.expectedRevision,project.revision);
+    assert.equal(body.workflowId,project.workflow.id);
+    project.workflow={...project.workflow,cancellationPending:true};
+    return respond(project,202);
   }
   if (p === `/api/studio/projects/${projectId}/assistant`) {
     assert.equal(body.expectedRevision, project.revision);
@@ -1120,6 +1134,9 @@ try {
     } finally { inferenceSettings = saved; }
   });
   await check("truncation recovery status is visible in Chinese and English", async () => {
+    // Dispose the prior UI before replacing its server-side design fixture.
+    // Otherwise a delayed view save is checked against a different project.
+    await page.goto('about:blank');
     pending = '';
     project = {...project,spec:null,jobId:null,designHash:null,workflow:{status:'running',stage:'design',inference:{phase:'generating',attempt:2,retryReason:'output-truncated',previousTokenLimit:10000,tokenLimit:20000}}};
     await page.goto(`${base}/?project=${projectId}`);
@@ -1139,6 +1156,73 @@ try {
     assert.match(await page.getByTestId('truncation-failure').innerText(),/已停止自动重试/);
     await page.getByRole('button',{name:'切换为英文',exact:true}).click();
     assert.match(await page.getByTestId('truncation-failure').innerText(),/Automatic retries have stopped/);
+  });
+  await check("staged progress, resume, cancellation and stale eligibility", async () => {
+    pending='';view.language='en';view.stage='requirements';
+    const generationId='dddddddd-1111-4111-8111-111111111111';
+    project={...project,spec:null,jobId:null,designHash:null,pendingQuestions:[],workflow:{id:'eeeeeeee-1111-4111-8111-111111111111',mode:'design',status:'running',stage:'design',generationId,canCancel:true,canResume:false,generation:{stage:'readiness',validatedUnits:0,reusedUnits:0,declaredUnits:0}}};
+    await page.reload();
+    await page.getByTestId('staged-progress').waitFor();
+    assert.match(await page.getByTestId('staged-progress').innerText(),/Checking essential inputs/);
+    assert.equal(await page.getByTestId('resume-generation').count(),0);
+    project.workflow={...project.workflow,status:'error',canResume:true,canCancel:false,generation:{stage:'stopped',validatedUnits:2,reusedUnits:1,declaredUnits:5}};
+    await page.reload();
+    await page.getByTestId('resume-generation').waitFor();
+    assert.match(await page.getByTestId('staged-progress').innerText(),/2 of 5 batches validated/);
+    assert.match(await page.getByTestId('staged-progress').innerText(),/1 reused/);
+    assert.doesNotMatch(await page.getByTestId('staged-progress').innerText(),/\d+%/);
+    const before=writes.length;
+    await page.getByTestId('resume-generation').click();
+    await page.getByTestId('cancel-generation').waitFor();
+    assert.equal(writes.slice(before).some(w=>w.body.resumeGenerationId===generationId),true);
+    await page.getByTestId('cancel-generation').click();
+    await page.getByTestId('cancel-generation').filter({hasText:'Stopping'}).waitFor();
+    assert.equal(await page.getByTestId('cancel-generation').isDisabled(),true);
+    project.workflow={...project.workflow,status:'error',canCancel:false,canResume:true,cancellationPending:false};
+    await page.reload();stagedConflict=true;
+    await page.getByTestId('resume-generation').click();
+    await page.getByText('Generation inputs changed. Reload before starting over.',{exact:true}).waitFor();
+    assert.equal(await page.getByTestId('resume-generation').count(),0);
+    stagedConflict=false;
+    project.workflow={...project.workflow,canResume:false,generationState:'exhausted'};
+    await page.reload();
+    await page.getByTestId('generation-exhausted').waitFor();
+    assert.equal(await page.getByTestId('resume-generation').count(),0);
+    assert.equal(await page.getByTestId('start-over-generation').count(),1);
+    await page.getByRole('button',{name:'Switch to Chinese',exact:true}).click();
+    assert.match(await page.getByTestId('generation-exhausted').innerText(),/预算/);
+    await page.screenshot({path:path.join(out,'staged-exhausted-zh.png')});
+    project.workflow={status:'running',stage:'design'};
+    await page.reload();await page.getByTestId('generation-activity').waitFor();
+    assert.equal(await page.getByTestId('cancel-generation').count(),0);
+    project.workflow={status:'questions',stage:'questions',generationId,generationState:'plan'};
+    project.pendingQuestions=[{id:'source',question:'Which source interface is available?'}];
+    await page.reload();await page.locator('.blueprint-question').waitFor();
+    assert.equal(await page.getByTestId('staged-progress').count(),0);
+    project.pendingQuestions=[];
+  });
+  await check("downstream stages hide stale inference progress in both languages", async () => {
+    pending='';
+    view={...view,language:'en'};
+    project={...project,spec:null,jobId:null,designHash:null,workflow:{status:'running',stage:'cad',generationId:'dddddddd-1111-4111-8111-111111111111',generationState:'accepted',inference:{phase:'validating',attempt:2,retryReason:'output-truncated',tokenLimit:20000,outputCharacters:4321}}};
+    for(const [stage,en,zh] of [['cad','Building CAD','正在生成 CAD'],['pricing','Looking up supplier prices','正在查询供应商价格'],['repair','Correcting design issues','正在修正设计问题'],['calculations','Calculating dimensions and loads','正在计算尺寸与载荷'],['verify','Checking geometry and electrical constraints','正在核对几何与电气']]){
+      project.workflow={...project.workflow,stage};
+      await page.reload();await page.getByTestId('generation-activity').waitFor();
+      assert.match(await page.locator('.activity-title').innerText(),new RegExp(en));
+      assert.equal(await page.getByTestId('truncation-status').count(),0);
+      assert(!/tokens|characters received|Generation attempt/.test(await page.getByTestId('generation-activity').innerText()));
+      await page.getByRole('button',{name:'Switch to Chinese',exact:true}).click();
+      assert.match(await page.locator('.activity-title').innerText(),new RegExp(zh));
+      assert(!/tokens|字符已收到|生成尝试/.test(await page.getByTestId('generation-activity').innerText()));
+      const savedEn=page.waitForResponse(response=>response.url().endsWith(`/projects/${projectId}/view`)&&response.request().method()==='PUT'&&response.request().postDataJSON()?.language==='en');
+      await page.getByRole('button',{name:'切换为英文',exact:true}).click();await savedEn;
+    }
+  });
+  await check("downstream failure does not offer to resume an already accepted generation", async () => {
+    project.workflow={...project.workflow,status:'error',stage:'error',generationState:'accepted',canResume:false};
+    await page.reload();await page.locator('.blueprint-error').waitFor();
+    assert.equal(await page.getByTestId('staged-progress').count(),0);
+    assert.equal(await page.getByTestId('start-over-generation').count(),0);
   });
   await check("no browser exceptions or hardware actions", async () => {
     assert.deepEqual(errors, []);

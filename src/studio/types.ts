@@ -103,6 +103,12 @@ export type Workflow = {
   message: string;
   startedAt?: string;
   finishedAt?: string;
+  generationId?: string;
+  generationState?: string;
+  canResume?: boolean;
+  canCancel?: boolean;
+  cancellationPending?: boolean;
+  generation?: {stage:string;declaredUnits:number;validatedUnits:number;reusedUnits:number;attempt?:number;elapsedMs?:number;remaining?:{requests:number;requestedOutputTokens:number;activeMs:number}};
   inference?: {phase:string;model?:string;attempt?:number;elapsedMs?:number;firstContentMs?:number|null;outputCharacters?:number;tokenLimit?:number;retryReason?:string|null;previousTokenLimit?:number|null;willRetry?:boolean};
   repairLimit: number;
   jobId?: string;

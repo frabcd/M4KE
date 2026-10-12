@@ -14,6 +14,9 @@ ROOT_FILES = {
     'CONTRIBUTING.md', 'SECURITY.md', '.editorconfig', '.gitattributes', 'texting.txt',
 }
 SERVER_FILES = {
+    'server/studio-generation-json.mjs', 'server/studio-generation-stages.mjs',
+    'server/studio-generation-checkpoints.mjs', 'server/studio-generation-admission.mjs',
+    'server/studio-staged-generation.mjs', 'server/studio-staged-service.mjs',
     'server/browser-policy.mjs', 'server/authored-builds.mjs',
     'server/index.mjs',
     'server/studio-architecture-plan.mjs',
@@ -52,6 +55,8 @@ SERVER_FILES = {
     'server/studio-verification-plan.mjs',
 }
 EXACT = {
+    'scripts/benchmark-staged-generation.mjs',
+    'tests/helpers/staged-generation-fixture.mjs', 'docs/resumable-generation.md',
     # Authored car source only; generated printer jobs and supplier assets stay private.
     'printing/authored_plates.py',
     'printing/build_handbook.py',
@@ -204,7 +209,7 @@ def scan_bytes(name, data):
         errors.append('credential-bearing HTTP URL')
     if name == '.env.example':
         lines = [line for line in text.splitlines() if line and not line.startswith('#')]
-        if any(line not in {'OLLAMA_URL=', 'QWEN_MODEL=', 'M4KE_INFERENCE_PROVIDER=', 'PORT=4173', 'M4KE_ALLOW_WEB=', 'M4KE_SEARCH_URL=', 'M4KE_SEARCH_ENGINES=', 'M4KE_PRICE_PROXY_URL=', 'M4KE_PROCUREMENT_SNAPSHOT_SHA256='} for line in lines):
+        if any(line not in {'OLLAMA_URL=', 'QWEN_MODEL=', 'M4KE_INFERENCE_PROVIDER=', 'PORT=4173', 'M4KE_ALLOW_WEB=', 'M4KE_SEARCH_URL=', 'M4KE_SEARCH_ENGINES=', 'M4KE_PRICE_PROXY_URL=', 'M4KE_PROCUREMENT_SNAPSHOT_SHA256=', 'M4KE_STAGED_GENERATION='} for line in lines):
             errors.append('environment example contains nonblank runtime configuration')
     return errors
 

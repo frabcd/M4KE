@@ -11,6 +11,10 @@ async function fixture(run){
   return {url:`http://127.0.0.1:${server.address().port}`,close:()=>new Promise(r=>{server.closeAllConnections();server.close(r);})};
 }
 const options={method:'POST',body:JSON.stringify({model:'test-local',stream:false})};
+test('durably budgeted callers disable hidden infrastructure replays',async()=>{
+ let calls=0;const f=await fixture((req,res)=>{calls++;res.writeHead(500);res.end('{"error":"runner process has terminated"}');});
+ try{await assert.rejects(localFetch(f.url,'/api/chat',options,5000,undefined,undefined,'ollama',{retryInfrastructure:false}),/HTTP 500/);assert.equal(calls,1);}finally{await f.close();}
+});
 test('Ollama streaming collects content across split UTF8 chunks without exposing thinking',async()=>{
   let payload;const f=await fixture(async(req,res)=>{let body='';for await(const c of req)body+=c;payload=JSON.parse(body);res.writeHead(200,{'Content-Type':'application/x-ndjson'});const bytes=Buffer.from([JSON.stringify({message:{thinking:'private reasoning'}}),JSON.stringify({message:{content:'{"标题":'}}),JSON.stringify({message:{content:'"toy"}'}}),JSON.stringify({done:true,done_reason:'stop',eval_count:9,message:{content:''}})].join('\n'));for(let i=0;i<bytes.length;i+=7)res.write(bytes.subarray(i,i+7));res.end();});
   try{const answer=await localFetch(f.url,'/api/chat',options,5000);assert.equal(payload.stream,true);assert.deepEqual(JSON.parse(answer.message.content),{标题:'toy'});assert.equal(answer.eval_count,9);assert(!JSON.stringify(answer).includes('private reasoning'));}finally{await f.close();}

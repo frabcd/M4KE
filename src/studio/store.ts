@@ -142,12 +142,13 @@ export const useStudio = defineStore("studio", () => {
     if (w.status === "complete") return t("本轮数字检查已完成", "Digital checks completed");
     if (w.status === "questions") return t("需要你确认几个关键点", "A few decisions need your input");
     const labels: Record<string, [string, string]> = {
-      design: ["正在理解要求并设计", "Understanding your brief and designing"],
-      calculations: ["正在计算尺寸与性能", "Calculating dimensions and performance"],
-      cad: ["正在生成并检查原生 CAD", "Building and checking native CAD"],
+      design: ["正在生成设计", "Generating the design"],
+      calculations: ["正在计算尺寸与载荷", "Calculating dimensions and loads"],
+      cad: ["正在生成 CAD", "Building CAD"],
       verify: ["正在核对几何与电气", "Checking geometry and electrical constraints"],
-      repair: ["正在根据检查结果修复方案", "Repairing issues found by the checks"],
-      planning_checks: ["正在安排验证步骤", "Planning verification steps"],
+      repair: ["正在修正设计问题", "Correcting design issues"],
+      planning_checks: ["正在选择检查项目", "Choosing checks"],
+      pricing: ["正在查询供应商价格", "Looking up supplier prices"],
       infrastructure_retry: ["连接恢复中，保留原设计重试", "Retrying the same design after an execution interruption"],
     };
     const pair = labels[w.stage]; return pair ? t(...pair) : t("正在处理当前方案", "Working on this design");
@@ -438,6 +439,30 @@ export const useStudio = defineStore("studio", () => {
         : result.workflow?.message || "";
     });
   }
+  async function generationAction(action: "resume" | "cancel") {
+    await perform(async () => {
+      const p = project.value, w = p?.workflow;
+      if (!p || !w) return;
+      if (action === "resume" && (!w.canResume || !w.generationId || dirty.value || conflict.value))
+        throw Error(t("需求已改变或无法续跑，请重新加载或重新开始。", "Inputs changed or resume is unavailable. Reload or start over."));
+      if (action === "cancel" && (!w.canCancel || w.cancellationPending || w.status !== "running")) return;
+      try {
+        const result = await send<Project>(`/api/studio/projects/${p.id}/${action === "resume" ? "run" : "cancel"}`, action === "resume"
+          ? {mode:w.mode || "design",resumeGenerationId:w.generationId,expectedRevision:p.revision}
+          : {workflowId:w.id,expectedRevision:p.revision});
+        await accept(result, !dirty.value);
+      } catch (e) {
+        // Refresh eligibility, preserving unsaved input. Never retry a stale action automatically.
+        if (e instanceof ApiError && e.status === 409) {
+          conflict.value = true;
+          try { await accept(await api<Project>(`/api/studio/projects/${p.id}`), false); } catch { /* Keep original conflict. */ }
+        }
+        throw e;
+      }
+    });
+  }
+  const resumeGeneration = () => generationAction("resume");
+  const cancelGeneration = () => generationAction("cancel");
   async function poll() {
     if (
       polling ||
@@ -843,6 +868,8 @@ export const useStudio = defineStore("studio", () => {
     newWorkspace,
     save,
     run,
+    resumeGeneration,
+    cancelGeneration,
     poll,
     setStage,
     select,

@@ -73,7 +73,7 @@ async function isTerminatedRunner(response, signal){
   }finally{releaseReader(reader);}
 }
 
-export async function localFetch(endpoint, pathname, options = {}, timeout = 3000, signal, onProgress, provider=settings.provider) {
+export async function localFetch(endpoint, pathname, options = {}, timeout = 3000, signal, onProgress, provider=settings.provider, {retryInfrastructure=true}={}) {
   endpoint=validateEndpoint(endpoint);
   if(validateProvider(provider)==='vllm')return vllmFetch(endpoint,pathname,options,timeout,signal,onProgress);
   const started=performance.now();let firstContentMs=null,lastProgress=0;
@@ -116,7 +116,7 @@ export async function localFetch(endpoint, pathname, options = {}, timeout = 300
     // Inference is side-effect-free. Recover once from a confirmed dead runner,
     // using the identical request and original deadline; never switch models,
     // relax schemas, restart the shared service or replay a partial response.
-    if(streaming&&response.status===500&&infrastructureRetries===0&&await isTerminatedRunner(response,combined)){
+    if(retryInfrastructure&&streaming&&response.status===500&&infrastructureRetries===0&&await isTerminatedRunner(response,combined)){
       infrastructureRetries++;await progress('recovering',0,true);
       await new Promise(resolve=>setTimeout(resolve,500));combined.throwIfAborted();continue;
     }
