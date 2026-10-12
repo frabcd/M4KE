@@ -169,3 +169,10 @@ to distinguish them from detailed final-design objects. The host maps these
 rosters exactly to the unchanged stored-plan contract. Prose checks and duplicate
 part/supply identities still reject. This is a schema-guidance fix, not automatic
 creation of verification criteria or proof of native CAD/physical acceptance.
+
+Staged decoder projection retains a simple ASCII word loop for IDs. The host
+still enforces the64-character limit. This option leaves the legacy projection
+unchanged and does not reintroduce large bounded string/hex grammars. A bounded
+exact122B diagnostic returned a valid ID in14.89s; this measures grammar execution
+only, not car-generation/native/visual acceptance. Actual HTTP fixtures check the
+sent schema, rather than relying only on an isolated projection test.

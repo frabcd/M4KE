@@ -32,6 +32,16 @@ test('proposal ID rosters map exactly to stored plan without accepting full-desi
  assert.throws(()=>validateGenerationProposal({...raw,verificationRequests:['bed-envelope']},context),/unsupported key/);
  assert.throws(()=>validateGenerationProposal({...raw,verificationIds:['Check all parts fit the printer.']},context),/no permitted shape/);
 });
+test('staged ASCII ID decoder rejects prose while host retains maximum ID length',()=>{
+ const full=planProposalSchema(readiness()),decoded=ollamaProjection(full,{asciiIds:true}),ids=decoded.properties.buildItemIds.anyOf[0].items;
+ assert.equal(ids.pattern,'^[A-Za-z][A-Za-z0-9_-]*$');
+ for(const id of ['mount-screw','Check all parts fit.','bad:id','']){
+  const raw={...proposal(plan()),buildItemIds:[id]};
+  if(id==='mount-screw')assert.doesNotThrow(()=>assertGenerationSchema(raw,decoded));else assert.throws(()=>assertGenerationSchema(raw,decoded));
+ }
+ const oversized={...proposal(plan()),buildItemIds:['a'.repeat(65)]};assert.doesNotThrow(()=>assertGenerationSchema(oversized,decoded));assert.throws(()=>validateGenerationProposal(oversized,{readiness:readiness()}));
+ assert.equal(ollamaProjection(full).properties.buildItemIds.anyOf[0].items.pattern,undefined,'Legacy projection remains unchanged');
+});
 test('plan enforces immutable metadata, references and global limits',()=>{
   assert.deepEqual(validateGenerationPlan(plan(),{readiness:readiness()}),plan());
   for(const mutate of [p=>p.parts.push(p.parts[0]),p=>p.requirements[0].text='changed',p=>p.assembly[0].partIds=['missing'],p=>p.parts[0].identity={type:'catalog',catalogId:'unadmitted'}]){
