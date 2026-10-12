@@ -166,6 +166,27 @@ async function create() {
         }}</span
         ><ChevronRight :size="13" />
       </button>
+    <nav
+      class="phase-navigation"
+      :aria-label="s.t('设计流程', 'Design workflow')"
+    >
+      <button
+        v-for="(phase, index) in stages"
+        :key="phase.id"
+        :data-stage="phase.id"
+        :class="{ active: s.stage === phase.id }"
+        :aria-current="s.stage === phase.id ? 'step' : undefined"
+        :disabled="
+          phase.id !== 'workspace' &&
+          ((!s.project && !s.job) || (index > 1 && !hasModel))
+        "
+        @click="go(phase.id)"
+      >
+        {{ s.t(phase.zh, phase.en) }}</button
+      ><span class="phase-tail">{{
+        s.project ? "R" + s.project.revision : s.t("离线优先", "Local workspace")
+      }}</span>
+    </nav>
       <div class="header-spacer" />
       <span class="runtime-dot" :class="{ ready: s.cap?.configured }" /><span
         class="desktop-only"
@@ -194,28 +215,7 @@ async function create() {
         <Globe :size="14" />{{ s.locale === "zh" ? "EN" : "中文" }}
       </button>
     </header>
-    <nav
-      class="phase-navigation"
-      :aria-label="s.t('设计流程', 'Design workflow')"
-    >
-      <button
-        v-for="(phase, index) in stages"
-        :key="phase.id"
-        :data-stage="phase.id"
-        :class="{ active: s.stage === phase.id }"
-        :aria-current="s.stage === phase.id ? 'step' : undefined"
-        :disabled="
-          phase.id !== 'workspace' &&
-          ((!s.project && !s.job) || (index > 1 && !hasModel))
-        "
-        @click="go(phase.id)"
-      >
-        <span>{{ String(index + 1).padStart(2, "0") }}</span
-        >{{ s.t(phase.zh, phase.en) }}</button
-      ><span class="phase-tail">{{
-        s.project ? "R" + s.project.revision : s.t("离线优先", "LOCAL FIRST")
-      }}</span>
-    </nav>
+
     <div v-if="s.error" class="global-alert error" role="alert">
       <AlertTriangle :size="16" /><span>{{ serviceOffline ? s.t("暂时无法连接 DGX。输入内容会保留；连接恢复后再继续。", "DGX is temporarily unreachable. Your input stays here; continue after reconnecting.") : s.error }}</span
       ><details v-if="serviceOffline" class="connection-details"><summary>{{ s.t("连接详情", "Connection details") }}</summary><p>{{ s.error }}</p></details><button
@@ -236,36 +236,16 @@ async function create() {
     </div>
     <main v-if="s.stage === 'workspace'" class="workspace-home">
       <div class="home-copy">
-        <span class="eyebrow">IDEAS INTO OBJECTS.</span>
-        <h1>
-          {{
-            s.t(
-              "把你的想法，变成下一件作品。",
-              "From an idea, to a design you understand.",
-            )
-          }}
-        </h1>
-        <p>
-          {{
-            s.t(
-              "描述一个小玩具。让AI 设计、解释并检查；每个零件都可追溯，每次修改都由你确认。",
-              "Describe a small toy. AI designs, explains and checks it. Inspect every part and confirm every change.",
-            )
-          }}
-        </p>
-        <div class="home-path">
-          <span>CONCEPT</span><i /><span>REASON</span><i /><span>VERIFY</span
-          ><i /><span>MAKE</span>
-        </div>
+        <h1>{{ s.t("项目", "Projects") }}</h1>
+        <p>{{ s.t("打开已有设计，或创建一个新项目。", "Open a design or start a new project.") }}</p>
       </div>
       <section class="create-workspace">
-        <span class="eyebrow">01 / {{ s.t("新工作区", "NEW WORKSPACE") }}</span>
-        <h2>{{ s.t("给创意一个空间", "A space for your idea") }}</h2>
+        <h2>{{ s.t("新建项目", "New project") }}</h2>
         <p>
           {{
             s.t(
-              "一个工作区对应一个设计项目，文件保存在运行 M4KE 的设备上；部署到 DGX 后即可独立使用。",
-              "One workspace, one project. Files stay on the device running M4KE; deploy it on your DGX for standalone use.",
+              "需求、零件和检查记录保存在同一个工作区。",
+              "Keep requirements, parts and checks together in one workspace.",
             )
           }}
         </p>
@@ -295,13 +275,13 @@ async function create() {
           }}<ArrowRight :size="14" />
         </button>
       </section>
-      <section class="recent-workspaces" v-if="s.projects.length">
+      <section class="recent-workspaces">
         <header>
           <h2>{{ s.t("最近的项目", "Recent projects") }}</h2>
-          <small>{{ s.t("DGX 权威记录", "DGX authoritative records") }}</small>
+          <small>{{ s.t("已保存的工作区", "Saved workspaces") }}</small>
         </header>
         <button
-          v-for="project in s.projects.slice(0, 5)"
+          v-for="project in s.projects.slice(0, 8)"
           :key="project.id"
           @click="s.openProject(project.id)"
         >
@@ -312,6 +292,7 @@ async function create() {
             }}</small></span
           ><ArrowRight :size="16" />
         </button>
+        <p v-if="!s.projects.length" class="recent-empty">{{ s.t("暂无项目。创建工作区后，它会显示在这里。", "No projects yet. Create a workspace to see it here.") }}</p>
       </section>
     </main>
     <main v-else-if="s.stage === 'requirements'" class="requirements-stage">
@@ -474,12 +455,13 @@ async function create() {
               {{ s.t("电路与连线", "Wiring") }}
             </button>
           </div>
+          <button v-if="hasModel && s.view.viewMode === 'model'" class="sandbox-toggle" data-testid="open-driving-sandbox" :aria-expanded="drivingOpen" @click="drivingOpen = !drivingOpen">{{s.t(drivingOpen?'关闭行驶仿真':'打开行驶仿真（估算）',drivingOpen?'Close driving sandbox':'Driving sandbox (estimated)')}}</button>
           <span class="model-state" :class="{ candidate: s.showCandidate }">{{
             s.showCandidate
-              ? s.t("候选预览 · 未应用", "CANDIDATE · NOT APPLIED")
+              ? s.t("候选预览 · 未应用", "Candidate · not applied")
               : s.cadParts
-                ? s.t("产物绑定 · mm", "ARTIFACT-BACKED · mm")
-                : s.t("概念草稿 · 未验证", "CONCEPT · UNVERIFIED")
+                ? s.t("产物绑定 · mm", "CAD artifact · mm")
+                : s.t("概念草稿 · 未验证", "Concept · unverified")
           }}</span
           ><button
             class="icon-button"
@@ -490,7 +472,7 @@ async function create() {
             <PanelRight :size="16" />
           </button>
           <button
-            class="primary workspace-confirm"
+            class="workspace-confirm"
             v-if="s.stage === 'refine'"
             data-testid="confirm-design"
             :disabled="
@@ -506,9 +488,6 @@ async function create() {
             {{ s.t("确认设计，进入验证", "Confirm design & verify")
             }}<ArrowRight :size="15" />
           </button>
-        </div>
-        <div v-if="hasModel && s.view.viewMode === 'model'" class="toolbar">
-          <button data-testid="open-driving-sandbox" :aria-expanded="drivingOpen" @click="drivingOpen = !drivingOpen">{{s.t(drivingOpen?'关闭行驶仿真':'打开行驶仿真（估算）',drivingOpen?'Close driving sandbox':'Open driving sandbox (estimated)')}}</button>
         </div>
         <DrivingSandbox v-if="drivingOpen && hasModel && s.view.viewMode === 'model'" :parts="s.displaySpec!.parts" :cad-parts="s.cadParts" :components="s.catalog.components" :library-sources="s.librarySources" :locale="s.locale" />
         <div class="viewport-area" v-show="s.view.viewMode === 'model' && !drivingOpen">

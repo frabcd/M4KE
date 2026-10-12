@@ -79,7 +79,7 @@ function toggle() {
   <section class="inspector" :data-active-id="p?.id || ''">
     <header class="panel-heading">
       <SlidersHorizontal :size="15" />
-      <h2>{{ s.t("属性与设计说明", "Properties & intent") }}</h2>
+      <h2>{{ s.t("零件属性", "Part properties") }}</h2>
     </header>
     <div class="inspector-content" v-if="p">
       <div class="part-heading">
@@ -89,12 +89,12 @@ function toggle() {
           <code>{{ p.id }}</code>
         </div>
       </div>
-      <span class="eyebrow">{{
+      <span class="part-kind">{{
         p.kind === "printed"
-          ? s.t("3D 打印件", "3D-PRINTED PART")
+          ? s.t("3D 打印件", "3D-printed part")
           : ["catalog", "library"].includes(p.shape.type)
-            ? s.t("源 CAD / 采购件", "SOURCE CAD / PURCHASED")
-            : s.t("采购件示意包络", "PURCHASED ENVELOPE")
+            ? s.t("源 CAD / 采购件", "Source CAD / purchased")
+            : s.t("采购件示意包络", "Purchased envelope")
       }}</span
       ><button class="full-width" @click="toggle">
         <EyeOff v-if="s.view.hiddenPartIds.includes(p.id)" :size="14" /><Eye
@@ -104,8 +104,19 @@ function toggle() {
           s.view.selectedPartIds.length
         }})
       </button>
-      <div class="explanation">
-        <h4>{{ s.t("这是什么？", "What is this?") }}</h4>
+      <dl class="property-grid">
+        <dt>{{ s.t("材料", "Material") }}</dt>
+        <dd>{{ p.material }}</dd>
+        <dt>{{ s.t("几何", "Geometry") }}</dt>
+        <dd>{{ dimensions || s.t("未记录", "Not recorded") }}</dd>
+        <dt>{{ s.t("位置", "Position") }}</dt>
+        <dd>{{ p.position.join(", ") }} <span class="property-unit">mm</span></dd>
+        <dt>{{ s.t("旋转", "Rotation") }}</dt>
+        <dd>{{ p.rotation.join(", ") }}<span class="property-unit">°</span></dd>
+      </dl>
+      <details class="explanation">
+        <summary>{{ s.t("设计说明", "Design rationale") }}</summary>
+        <h4>{{ s.t("用途", "Purpose") }}</h4>
         <p>
           {{
             explanation?.purpose ||
@@ -115,7 +126,7 @@ function toggle() {
             )
           }}
         </p>
-        <h4>{{ s.t("为什么放在这里？", "Why here?") }}</h4>
+        <h4>{{ s.t("放置依据", "Placement") }}</h4>
         <p>
           {{
             explanation?.placementReason ||
@@ -125,7 +136,7 @@ function toggle() {
             )
           }}
         </p>
-        <h4>{{ s.t("为什么使用这个？", "Why this part?") }}</h4>
+        <h4>{{ s.t("选型依据", "Selection") }}</h4>
         <p>
           {{
             explanation?.selectionReason ||
@@ -141,7 +152,7 @@ function toggle() {
             "Design rationale is not physical verification evidence.",
           )
         }}</small>
-      </div>
+      </details>
       <p v-if="p.shape.type === 'library'" class="hint">
         Source SHA-256: <code>{{ p.shape.sourceSha256 }}</code>
       </p>
@@ -153,21 +164,11 @@ function toggle() {
           )
         }}
       </p>
-      <dl class="property-grid">
-        <dt>{{ s.t("材料", "Material") }}</dt>
-        <dd>{{ p.material }}</dd>
-        <dt>{{ s.t("几何", "Geometry") }}</dt>
-        <dd>{{ dimensions }}</dd>
-        <dt>{{ s.t("位置", "Position") }}</dt>
-        <dd>{{ p.position.join(", ") }} mm</dd>
-        <dt>{{ s.t("旋转", "Rotation") }}</dt>
-        <dd>{{ p.rotation.join(", ") }}°</dd>
-      </dl>
       <p class="hint">
         {{
           s.t(
-            "通过底部 AI 提出修改，预览差异后确认。不直接编辑数值。",
-            "Request changes through AI below; review the diff before confirming. No direct numeric edits.",
+            "通过助手提出修改，检查候选后确认。",
+            "Request changes in the assistant. Review the candidate before applying.",
           )
         }}
       </p>

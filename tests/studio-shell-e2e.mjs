@@ -571,6 +571,29 @@ try {
     },
   );
   await check(
+    "inspection starts compact, with properties first and an expandable assistant",
+    async () => {
+      await row("Printed base").locator(".tree-select").click();
+      const disclosure = page.locator('.inspector details.explanation');
+      assert.equal(await disclosure.count(), 1, 'Rationale belongs in a disclosure');
+      assert.equal(await disclosure.getAttribute('open'), null);
+      assert(await page.locator('.property-grid').isVisible());
+      assert.equal(await page.locator('.inspector').getByText(parts[0].explanation.purpose, {exact:true}).isVisible(), false);
+      const toggle = page.getByTestId('assistant-expand');
+      assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+      const compactHeight = (await page.locator('.assistant-composer').boundingBox()).height;
+      assert(compactHeight < 85, 'Idle assistant should leave room for the model');
+      await page.getByTestId('ai-input').fill('An unsent inspection question');
+      assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
+      await toggle.click();
+      assert.equal(await page.getByTestId('ai-input').inputValue(), 'An unsent inspection question');
+      await toggle.click();
+      await page.getByTestId('ai-input').fill('');
+      await disclosure.locator('summary').click();
+      await page.locator('.inspector').getByText(parts[0].explanation.purpose, {exact:true}).waitFor();
+    },
+  );
+  await check(
     "printed/purchased multiselect, active inspector, missing old rationale",
     async () => {
       await row("Printed base").locator(".tree-select").click();
@@ -723,6 +746,14 @@ try {
       assert.equal(project.designHash, hash);
       assert.equal(project.revision, revision);
       await page.getByTestId('candidate-discussion').waitFor();
+      await page.getByTestId('assistant-expand').click();
+      assert(await page.getByTestId('candidate-discussion').isVisible(), 'Collapsed assistant must retain candidate status');
+      assert(await page.locator('.assistant-composer').evaluate(el => {
+        const form = el.querySelector('form').getBoundingClientRect();
+        const header = el.querySelector('header').getBoundingClientRect();
+        return form.width > el.clientWidth / 2 && form.left >= header.right;
+      }), 'Candidate status must not displace the compact input into the narrow header column');
+      await page.getByTestId('assistant-expand').click();
       assert.equal(await page.getByTestId('ai-mode').inputValue(),'ask');
       await row('Candidate-only cap').locator('.tree-select').click();
       await page.waitForTimeout(500);
@@ -1018,8 +1049,45 @@ try {
       await page.screenshot({
         path: path.join(out, "workspace-refine-desktop.png"),
       });
+      // Laptop workbench: the model and primary controls must coexist without
+      // depending on scrolling, and expanding conversation must remain bounded.
+      await page.setViewportSize({ width: 1366, height: 768 });
+      const labelContrast = await page.evaluate(() => {
+        const rgb = value => value.match(/[\d.]+/g).slice(0, 3).map(Number);
+        const luminance = color => rgb(color).map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4)
+          .reduce((sum, v, i) => sum + v * [.2126, .7152, .0722][i], 0);
+        return ['.assistant-composer header .hint', '.property-grid dt'].map(selector => {
+          const element = document.querySelector(selector);
+          let parent = element, background;
+          do {
+            background = getComputedStyle(parent).backgroundColor;
+            parent = parent.parentElement;
+          } while (parent && (background === 'transparent' || background === 'rgba(0, 0, 0, 0)'));
+          const a = luminance(getComputedStyle(element).color), b = luminance(background);
+          return {selector, ratio:(Math.max(a,b)+.05)/(Math.min(a,b)+.05)};
+        });
+      });
+      for (const label of labelContrast) assert(label.ratio >= 4.5, `${label.selector} contrast ${label.ratio.toFixed(2)} must meet 4.5:1`);
+      const laptop = await page.evaluate(() => {
+        const rect = selector => {
+          const r = document.querySelector(selector).getBoundingClientRect();
+          return {top:r.top, bottom:r.bottom, left:r.left, right:r.right, height:r.height};
+        };
+        return {viewport:rect('.studio-viewport'), composer:rect('.assistant-composer'),
+          confirm:rect('[data-testid="confirm-design"]'), send:rect('[data-testid="ai-send"]'),
+          width:innerWidth,height:innerHeight};
+      });
+      assert(laptop.viewport.height >= 360, 'Laptop keeps usable model height');
+      assert(laptop.viewport.bottom <= laptop.composer.top + 1, 'Assistant must not cover the model');
+      for (const control of [laptop.confirm,laptop.send]) {
+        assert(control.left >= 0 && control.right <= laptop.width && control.top >= 0 && control.bottom <= laptop.height,
+          'Laptop primary actions must remain on screen');
+      }
+      await page.screenshot({path:path.join(out,'workspace-laptop.png')});
       await page.emulateMedia({ reducedMotion: "reduce" });
       await page.setViewportSize({ width: 390, height: 844 });
+      assert(await page.locator('.app-header').evaluate(el => el.getBoundingClientRect().height <= 77),
+        'Mobile header must keep utilities on one row above navigation');
       assert(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,

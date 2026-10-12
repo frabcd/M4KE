@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch, onUnmounted } from "vue";
-import { ArrowUp, ChevronDown, MessageSquare, X, Sparkles } from "@lucide/vue";
+import { ArrowUp, ChevronDown, MessageSquare, X } from "@lucide/vue";
 import { useStudio } from "../studio/store";
 import type { Conversation } from "../studio/types";
 const props = defineProps<{brief?: boolean}>();
 const s = useStudio(),
   message = ref(""),
   mode = ref<"ask" | "propose">("ask"),
-  expanded = ref(true),
+  expanded = ref(!!props.brief),
   history = ref<HTMLElement>();
 type EditReply = {request: string; revision: number; designHash: string | null; selectedPartIds: string[]};
 const pendingEdit = ref<EditReply | null>(null);
@@ -47,7 +47,8 @@ watch(() => [s.conversation.length, s.working, s.error, expanded.value], async (
   if (followLatest.value) await latest();
   else unread.value = true;
 });
-watch(() => s.project?.id, () => { message.value = ""; pendingEdit.value = null; clearPending(); followLatest.value = true; unread.value = false; });
+watch(() => s.project?.id, () => { message.value = ""; pendingEdit.value = null; clearPending(); followLatest.value = true; unread.value = false; expanded.value = !!props.brief; });
+watch(() => s.error, value => { if (value) expanded.value = true; });
 watch(() => [s.project?.revision, s.project?.designHash, ...s.view.selectedPartIds], () => {
   if (pendingEdit.value && !currentContext(pendingEdit.value)) pendingEdit.value = null;
 }, {flush: "sync"});
@@ -104,15 +105,16 @@ async function submit() {
 }
 </script>
 <template>
-  <section class="assistant-composer" :class="{'brief-conversation': brief}" :aria-label="s.t('AI 设计助手', 'AI design assistant')">
+  <section class="assistant-composer" :class="{'brief-conversation': brief, 'is-compact': !expanded && !brief}" :aria-label="s.t('AI 设计助手', 'AI design assistant')">
     <header>
       <button
         class="plain"
+        data-testid="assistant-expand"
         @click="expanded = !expanded"
         :aria-expanded="expanded"
       >
-        <Sparkles :size="15" /><strong>AI</strong
-        ><span>{{ brief ? s.t("需求问答", "Brief questions") : s.t("设计助手", "Design assistant") }}</span
+        <MessageSquare :size="15" /><strong>AI</strong
+        ><span>{{ brief ? s.t("需求问答", "Brief questions") : s.t("助手", "Assistant") }}</span
         ><ChevronDown :size="14" /></button
       ><span class="hint">{{
         s.t(
@@ -121,7 +123,7 @@ async function submit() {
         )
       }}</span>
     </header>
-    <div v-if="expanded" ref="history" class="conversation" aria-live="polite" @scroll="trackScroll">
+    <div v-if="expanded && (s.conversation.length || pending || s.error)" ref="history" class="conversation" aria-live="polite" @scroll="trackScroll">
       <p v-if="!s.conversation.length" class="assistant-welcome">
         {{
           s.t(
@@ -159,7 +161,7 @@ async function submit() {
         <p v-if="entry.questions?.length" class="clarification-boundary">{{ canAnswer(entry) ? s.t("待确认建议，尚未验证兼容性。选择答案会恢复这次修改的零件上下文；发送后才继续。", "Unverified options. Choosing an answer restores this edit's part context; send it to continue.") : s.t("历史追问：版本已改变或这次修改已结束。请提出新的修改，不会重复应用旧答案。", "Historical question: its version changed or the edit ended. Start a new edit; old answers cannot be reapplied.") }}</p>
       </article>
       <div v-if="pending" class="assistant-pending" role="status" data-testid="ai-pending">
-        <div class="assistant-pending-title"><Sparkles :size="14" /><strong>{{ pending.mode === 'ask' ? s.t('正在回复', 'Preparing a reply') : s.t('准备修改建议', 'Preparing a change') }}</strong><span aria-hidden="true">{{ elapsed }}s</span></div>
+        <div class="assistant-pending-title"><MessageSquare :size="14" /><strong>{{ pending.mode === 'ask' ? s.t('正在回复', 'Preparing a reply') : s.t('准备修改建议', 'Preparing a change') }}</strong><span aria-hidden="true">{{ elapsed }}s</span></div>
         <p v-if="pending.mode==='propose'">{{s.t('当前设计保持不变，候选需你确认后应用。','Your current design stays unchanged until you apply the candidate.')}}</p>
         <small>R{{ pending.revision }} · {{ pending.names.length ? pending.names.join(' · ') : s.t('当前项目', 'Current project') }}</small>
       </div>
@@ -171,7 +173,7 @@ async function submit() {
       <div><strong>{{ s.t('继续补充这次修改', 'Continue this edit') }}</strong><p :title="pendingEdit.request">{{ pendingEdit.request }}</p></div>
       <button type="button" :disabled="s.working" @click="pendingEdit = null">{{ s.t('开始新修改', 'Start a new edit') }}</button>
     </div>
-    <div v-if="selected.length" class="context-chips">
+    <div v-if="selected.length" v-show="expanded" class="context-chips">
       <span class="hint">{{ s.t("选中上下文", "Selection context") }}</span
       ><button
         v-for="part in selected"
@@ -198,6 +200,7 @@ async function submit() {
         id="studio-composer"
         data-testid="ai-input"
         v-model="message"
+        @focus="expanded = true"
         rows="1"
         maxlength="4000"
         :disabled="
@@ -208,8 +211,8 @@ async function submit() {
         :placeholder="
           pending ? s.t('可以先写下一条；当前请求完成后再发送…', 'Draft your next message while this request finishes…') : brief ? s.t('例如：这个需求还缺什么？60 分贝需要怎样校准？', 'What is missing? How should 60 dB be calibrated?') : mode === 'ask'
             ? s.t(
-                '为什么这样设计？选中零件后问得更具体…',
-                'Why this design? Select parts to ask specifically…',
+                selected.length ? `询问选中的 ${selected.length} 个零件…` : '询问这个设计…',
+                selected.length ? `Ask about ${selected.length} selected ${selected.length === 1 ? 'part' : 'parts'}…` : 'Ask about this design…',
               )
             : s.t(
                 '描述你想调整的细节，先生成候选，不立即覆盖…',
