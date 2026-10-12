@@ -138,6 +138,7 @@ export function createProjectStore({root,execute,findJob,assistant,prepareCandid
     return structuredClone({projectId:project.id,revision:project.revision,designHash:project.designHash,selectedPartIds:selected,parts:project.spec.parts.filter(p=>selected.includes(p.id)),connections});
   }
   async function assist(id,input,signal){
+    signal?.throwIfAborted();
     if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(k=>!['mode','message','expectedRevision','designHash','selectedPartIds','proposalId'].includes(k)))throw fail('Unsupported assistant field.');
     if(!['ask','propose'].includes(input.mode)||typeof input.message!=='string'||!input.message.trim()||input.message.length>4000)throw fail('Assistant needs a mode and a message of 1–4000 characters.');
     if(input.proposalId!==undefined&&(input.mode!=='ask'||typeof input.proposalId!=='string'||!UUID.test(input.proposalId)))throw fail('A proposal preview supports read-only questions with a valid proposal ID.');
@@ -157,12 +158,17 @@ export function createProjectStore({root,execute,findJob,assistant,prepareCandid
       }else context=frozenContext(project,input,input.mode==='ask');
       return {project:structuredClone(project),context,proposal,history:(await conversationEntries(id)).slice(-8).map(({role,message,revision,designHash})=>({role,message:message.slice(0,1200),revision,designHash}))};
     });
+    signal?.throwIfAborted();
     const result=await assistant({...snapshot,mode:input.mode,message:input.message.trim(),signal});
+    signal?.throwIfAborted();
     if(typeof result?.message!=='string'||!result.message.trim()||result.message.length>12000)throw fail('Assistant returned an invalid explanation.',502);
     async function recorded(reply){
       const conversation=await locked(id,async()=>{
-        if(input.proposalId)frozenContext(await read(id),{...input,selectedPartIds:[]});
+        const current=await read(id);
+        if(input.proposalId)frozenContext(current,{...input,selectedPartIds:[]});
+        else frozenContext(current,input,input.mode==='ask');
         const entries=await conversationEntries(id),base={mode:input.mode,revision:snapshot.context.revision,designHash:snapshot.context.designHash,selectedPartIds:snapshot.context.selectedPartIds,at:new Date().toISOString(),...(snapshot.proposal?{basis:'candidate',proposalId:snapshot.proposal.id,baseDesignHash:snapshot.project.designHash}:{})};
+        signal?.throwIfAborted();
         entries.push({...base,id:randomUUID(),role:'user',message:input.message.trim()},{...base,id:randomUUID(),role:'assistant',message:reply.message,...reply.questions?{questions:reply.questions}:{},model:reply.model||null});
         return writeSidecar(id,'conversation',entries.slice(-80));
       });
@@ -176,7 +182,13 @@ export function createProjectStore({root,execute,findJob,assistant,prepareCandid
     }
     let spec=validateUserRefinement(snapshot.project.spec,generated),prepared=null;
     if(prepareCandidate){
+      await locked(id,async()=>{
+        const current=await read(id);frozenContext(current,input);
+        if(active.has(id)||current.workflow?.status==='running')throw fail('Workflow started before candidate preparation.',409);
+        signal?.throwIfAborted();
+      });
       prepared=await prepareCandidate({project:snapshot.project,spec,metrics:result.metrics,model:result.model,message:input.message,signal});
+      signal?.throwIfAborted();
       spec=validateUserRefinement(snapshot.project.spec,prepared.spec);
     }
     const hash=designHash(spec);
@@ -187,6 +199,7 @@ export function createProjectStore({root,execute,findJob,assistant,prepareCandid
     await locked(id,async()=>{
       const current=await read(id);frozenContext(current,input);
       if(active.has(id))throw fail('Workflow started before the proposal completed.',409);
+      signal?.throwIfAborted();
       await writeSidecar(id,'proposal-'+proposal.id,proposal);
     });
     return recorded({message:result.message,context:snapshot.context,proposal,model:result.model,warnings:result.warnings||[]});

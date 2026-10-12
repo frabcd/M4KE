@@ -393,12 +393,13 @@ export function createStudioService({root,getSettings,localFetch,getModels,body,
       const runId=randomUUID(),runAt=new Date().toISOString(),runFolder=path.join(root,'data','design-runs');
       await mkdir(runFolder,{recursive:true});
       async function saveRun(status='running'){
-        const record={runId,at:runAt,status,model:settings.model,modelDigest:installed.digest||null,inferenceConfig,generationMode:patchMode?'model-geometry-patch':'full-design',...(patchMode?{parentDesignHash:designHash(previousSpec)}:{}),skillHashes:skills.hashes,catalogHash:catalog.manifestSha256||null,outputSchemaHash:digest(JSON.stringify(outputSchema)),candidateContext,libraryContext,sourcingContext,sourcingContextSha256:digest(JSON.stringify(sourcingContext)),designHash:spec?designHash(spec):null,...(clarification?{clarification:{discardedFields:clarification.discardedFields,geometryAccepted:false}}:{}),...(architectureRecord?{architectureReplanning:architectureRecord}:{}),request:data.request,answers:data.answers||[],attempts,errors,elapsedMs:Date.now()-started};
+        const record={runId,at:runAt,status,cancelled:Boolean(signal?.aborted),model:settings.model,modelDigest:installed.digest||null,inferenceConfig,generationMode:patchMode?'model-geometry-patch':'full-design',...(patchMode?{parentDesignHash:designHash(previousSpec)}:{}),skillHashes:skills.hashes,catalogHash:catalog.manifestSha256||null,outputSchemaHash:digest(JSON.stringify(outputSchema)),candidateContext,libraryContext,sourcingContext,sourcingContextSha256:digest(JSON.stringify(sourcingContext)),designHash:spec?designHash(spec):null,...(clarification?{clarification:{discardedFields:clarification.discardedFields,geometryAccepted:false}}:{}),...(architectureRecord?{architectureReplanning:architectureRecord}:{}),request:data.request,answers:data.answers||[],attempts,errors,elapsedMs:Date.now()-started};
         const target=path.join(runFolder,runId+'.json'),temp=target+'.tmp';
         await writeFile(temp,JSON.stringify(record,null,2));await rename(temp,target);return record;
       }
       await saveRun();
       for(let attempt=0;attempt<maxFormatAttempts;attempt++){
+        if(signal?.aborted){inferenceError=new Error('Local design generation cancelled');errors.push(inferenceError.message);break;}
         if(!patchMode){
           outputSchema=architectureBoundSchema(designSchemaForDraft(failedDraft),architecturePlan);
           // A full refinement is a proposed new version, not a legacy read.
@@ -415,6 +416,7 @@ export function createStudioService({root,getSettings,localFetch,getModels,body,
         catch(error){inferenceError=error;errors.push(error.message);attempts.push({attempt:attempt+1,error:error.message,code:error.cause?.code||error.name,infrastructureRetries:error.infrastructureRetries||0,content:null});await saveRun();break;}
         attempts.push({attempt:attempt+1,inferenceConfig:{...inferenceConfig},outputSchemaHash:digest(JSON.stringify(outputSchema)),evalCount:answer.eval_count,promptEvalCount:answer.prompt_eval_count??null,promptEvalDurationNs:answer.prompt_eval_duration??null,evalDurationNs:answer.eval_duration??null,totalDurationNs:answer.total_duration,inferenceMetrics:answer.inferenceMetrics||null,doneReason:answer.done_reason,content:String(answer.message?.content||'').slice(0,120000),contentTruncated:String(answer.message?.content||'').length>120000});
         await saveRun();
+        if(signal?.aborted){inferenceError=new Error('Local design generation cancelled');errors.push(inferenceError.message);break;}
         if(answer.done_reason==='length'){
           const recovery=!truncationRetried&&attempt<2?truncationRecovery(inferenceConfig,answer.prompt_eval_count):null;
           errors.push(`Design output was truncated at its ${inferenceConfig.num_predict}-token limit. ${recovery?'Retry once with a larger bounded budget and compact complete JSON.':'No further token-limit retry is allowed.'} Preserve required design/electrical fields and checks; no CAD specification accepted.`);
@@ -427,6 +429,7 @@ export function createStudioService({root,getSettings,localFetch,getModels,body,
         }
         try {
           if(onProgress)await onProgress({...answer.inferenceMetrics,...progressContext,phase:'validating'});
+          signal?.throwIfAborted();
           const parsed=JSON.parse(String(answer.message?.content||'').replace(/^\s*```(?:json)?\s*/i,'').replace(/\s*```\s*$/,''));
           if(patchMode){failedPatch=parsed;spec=applyModelRepair(previousSpec,parsed);break;}
           const normalized=normalizeGeneratedDraft(parsed.spec||parsed);
@@ -439,6 +442,7 @@ export function createStudioService({root,getSettings,localFetch,getModels,body,
           spec=admitted.spec;break;
         }catch(error){
           spec=null;errors.push(error.message);retryReason='validation-failed';previousTokenLimit=null;
+          if(signal?.aborted){inferenceError=new Error('Local design generation cancelled');break;}
           // Do not spend another full CAD response repeating a disproven power or
           // motion architecture. The local model gets a compact numerical task.
           if(!patchMode&&!architectureRecord&&attempt+1<maxFormatAttempts&&failedDraft?.parts?.length&&/power architecture|motion-operating-point|driver-voltage-range|usable-torque-basis/i.test(error.message)){
@@ -452,7 +456,9 @@ export function createStudioService({root,getSettings,localFetch,getModels,body,
           }
         }finally{await saveRun();}
       }
+      if(signal?.aborted){spec=null;inferenceError=new Error('Local design generation cancelled');}
       const provenance=await saveRun(spec?(spec.questions.length?'clarification':'accepted'):'rejected');
+      if(signal?.aborted&&spec){spec=null;inferenceError=new Error('Local design generation cancelled');await saveRun('rejected');}
       if(inferenceError)throw fail(`Local Qwen request failed; retained diagnostic run ${runId}: ${inferenceError.message}`,502);
       if(!spec)throw fail(`Qwen did not produce a valid CAD specification after ${attempts.length} bounded format attempts: `+errors.at(-1),422);
       return {spec,designHash:designHash(spec),model:settings.model,skillHashes:skills.hashes,metrics:{runId,elapsedMs:provenance.elapsedMs,attempts:attempts.length,evalCount:answer.eval_count,candidateContextSha256:candidateContext.sha256,candidateReferenceCount:candidateContext.snapshot.records.length},verification:verifyDesign(spec,null),warnings:spec.questions.length?['Clarification only. Question options are unverified proposals, not component or safety recommendations. Any accompanying geometry was discarded; no CAD or design change was accepted.']:['Generated design intent is not physical evidence. Native CAD construction and independent checks are a separate step.']};

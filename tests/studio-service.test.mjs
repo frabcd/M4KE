@@ -71,7 +71,7 @@ async function fixture(options={}){
   const root=await mkdtemp(path.join(tmpdir(),'m4ke-studio-'));
   const calls=[];
   const handle=createStudioService({root,getSettings:()=>({endpoint:'http://127.0.0.1:11434',model:'qwen3.8:27b'}),getModels:async()=>{if(options.tagDelay)await new Promise(r=>setTimeout(r,options.tagDelay));return [{name:options.modelName||'qwen3.8:27b',digest:'fixture'}];},localFetch:async(...args)=>{calls.push(args);if(options.onInfer)await options.onInfer(root,calls.length);return {message:{content:JSON.stringify(typeof options.reply==='function'?options.reply(calls.length):options.reply||sample())},eval_count:50,done_reason:typeof options.doneReason==='function'?options.doneReason(calls.length):options.doneReason||'stop'};},body:async req=>{let b='';for await(const c of req)b+=c;return JSON.parse(b);},json:(res,status,data)=>{res.writeHead(status,{'content-type':'application/json'});res.end(JSON.stringify(data));}});
-  const server=http.createServer(async(req,res)=>{try{if(!await handle(req,res,new URL(req.url,'http://localhost').pathname)){res.writeHead(404);res.end();}}catch(e){res.writeHead(e.status||500,{'content-type':'application/json'});res.end(JSON.stringify({error:e.message}));}});
+  const server=http.createServer(async(req,res)=>{try{if(!await handle(req,res,new URL(req.url,'http://localhost').pathname,options.signal)){res.writeHead(404);res.end();}}catch(e){res.writeHead(e.status||500,{'content-type':'application/json'});res.end(JSON.stringify({error:e.message}));}});
   await new Promise(r=>server.listen(0,'127.0.0.1',r));const url=`http://127.0.0.1:${server.address().port}`;
   return {root,url,calls,close:async()=>{await new Promise(r=>server.close(r));await rm(root,{recursive:true,force:true});}};
 }
@@ -84,6 +84,18 @@ test('offline tutorial orders prerequisites before dependants without changing t
 test('offline tutorial preserves critical failure and disables progression acknowledgements',()=>{const spec=validateDesignSpec(sample()),verification=verifyDesign(spec);verification.claims.push({id:'fixture-fail',critical:true,status:'FAIL',label:'Electrical test',method:'Fixture',details:'Fixture failure'});verification.overall='FAILED';const html=tutorialHTML(spec,verification,designHash(spec));assert(html.includes('STOP: critical verification failed.'));assert(html.includes('type="checkbox" disabled'));});
 test('studio API sends actual normalized skills, exact local tag and saves design provenance',async()=>{const f=await fixture();try{const res=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json',connection:'close'},body:JSON.stringify({request:'Make a test toy',answers:[]})});assert.equal(res.status,200);const data=await res.json();assert.equal(data.spec.parts[0].id,'body');assert.match(data.designHash,/^[a-f0-9]{64}$/);assert(data.skillHashes);assert.equal(data.metrics.attempts,1);const payload=JSON.parse(f.calls[0][2].body);assert.equal(payload.model,'qwen3.8:27b');assert.equal(payload.think,false);assert.equal(payload.options.num_predict,10000);assert(payload.messages[0].content.length>500);assert.equal(data.verification.physical,'UNKNOWN');}finally{await f.close();}});
 test('unavailable exact model is not silently substituted',async()=>{const f=await fixture({modelName:'another-model'});try{const res=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json',connection:'close'},body:JSON.stringify({request:'toy'})});assert.equal(res.status,409);assert.equal(f.calls.length,0);}finally{await f.close();}});
+
+test('full design cancellation while inference completes rejects the response without a retry',async()=>{
+  const controller=new AbortController();
+  const f=await fixture({signal:controller.signal,onInfer:()=>controller.abort(new Error('Cancelled design fixture'))});
+  try{
+    const response=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({request:'toy'})});
+    assert.notEqual(response.status,200);assert.match((await response.json()).error,/cancel/i);assert.equal(f.calls.length,1);
+    const files=await readdir(path.join(f.root,'data/design-runs'));
+    const receipt=JSON.parse(await readFile(path.join(f.root,'data/design-runs',files.find(n=>n.endsWith('.json'))),'utf8'));
+    assert.equal(receipt.status,'rejected');assert.equal(receipt.designHash,null);assert.equal(receipt.cancelled,true);
+  }finally{await f.close();}
+});
 
 test('mixed model questions reach the user once while premature geometry stays diagnostic only',async()=>{
   const raw={...sample(),questions:[{id:'interface',question:'Which exact interface?'}],electrical:{invalid:'not accepted'}};
