@@ -438,6 +438,30 @@ export const useStudio = defineStore("studio", () => {
         : result.workflow?.message || "";
     });
   }
+  async function generationAction(action: "resume" | "cancel") {
+    await perform(async () => {
+      const p = project.value, w = p?.workflow;
+      if (!p || !w) return;
+      if (action === "resume" && (!w.canResume || !w.generationId || dirty.value || conflict.value))
+        throw Error(t("需求已改变或无法续跑，请重新加载或重新开始。", "Inputs changed or resume is unavailable. Reload or start over."));
+      if (action === "cancel" && (!w.canCancel || w.cancellationPending || w.status !== "running")) return;
+      try {
+        const result = await send<Project>(`/api/studio/projects/${p.id}/${action === "resume" ? "run" : "cancel"}`, action === "resume"
+          ? {mode:w.mode || "design",resumeGenerationId:w.generationId,expectedRevision:p.revision}
+          : {workflowId:w.id,expectedRevision:p.revision});
+        await accept(result, !dirty.value);
+      } catch (e) {
+        // Refresh eligibility, preserving unsaved input. Never retry a stale action automatically.
+        if (e instanceof ApiError && e.status === 409) {
+          conflict.value = true;
+          try { await accept(await api<Project>(`/api/studio/projects/${p.id}`), false); } catch { /* Keep original conflict. */ }
+        }
+        throw e;
+      }
+    });
+  }
+  const resumeGeneration = () => generationAction("resume");
+  const cancelGeneration = () => generationAction("cancel");
   async function poll() {
     if (
       polling ||
@@ -843,6 +867,8 @@ export const useStudio = defineStore("studio", () => {
     newWorkspace,
     save,
     run,
+    resumeGeneration,
+    cancelGeneration,
     poll,
     setStage,
     select,

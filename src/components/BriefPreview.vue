@@ -8,6 +8,12 @@ onMounted(()=>{clock=setInterval(()=>now.value=Date.now(),1000);});
 onUnmounted(()=>clearInterval(clock));
 const workflow=computed(()=>s.project?.workflow);
 const running=computed(()=>workflow.value?.status==='running');
+const staged=computed(()=>Boolean(workflow.value?.generationId));
+const stagedPhase=computed(()=>{
+  const labels:Record<string,[string,string]>={readiness:['正在确认必要输入','Checking essential inputs'],plan:['正在确定分阶段计划','Planning generation batches'],generating:['正在生成当前批次','Generating the current batch'],retrying:['正在修正当前批次','Correcting the current batch'],validation:['正在检查完整设计','Checking the complete design'],stopped:['生成已停止，已保存进度','Generation stopped; progress saved'],exhausted:['本次生成预算已用尽或无法继续','This generation cannot continue within its budget'],accepted:['完整设计已通过结构检查','Complete design admitted']};
+  const state=workflow.value?.generationState||workflow.value?.generation?.stage||'readiness';
+  return labels[state]?s.t(...labels[state]):s.t('正在处理当前阶段','Working on the current stage');
+});
 const elapsed=computed(()=>{
   const start=Date.parse(workflow.value?.startedAt||'');
   if(!Number.isFinite(start))return '';
@@ -39,7 +45,18 @@ const outputs=[
       <p :class="{'empty-brief':!s.request.trim()}">{{s.request.trim()||s.t('在左侧描述行为、外形或限制。这里会一直保留你的想法。','Describe behavior, form or constraints on the left. Your intent stays visible here.')}}</p>
       <div class="brief-facts"><span v-if="s.budget.trim()">{{s.budget}}</span><span v-if="Object.values(s.answers).some(Boolean)">{{Object.values(s.answers).filter(Boolean).length}} {{s.t('项已回答','answers recorded')}}</span><span>{{s.t('成人监督原型','Adult-supervised prototype')}}</span></div>
     </section>
-    <div v-if="running" class="generation-activity" role="status" data-testid="generation-activity">
+    <section v-if="staged" class="generation-activity" aria-live="polite" data-testid="staged-progress">
+      <strong>{{stagedPhase}}</strong>
+      <p v-if="workflow?.generation?.declaredUnits">{{s.t(`${workflow.generation.declaredUnits} 个批次中 ${workflow.generation.validatedUnits} 个已校验；${workflow.generation.reusedUnits} 个已复用`,`${workflow.generation.validatedUnits} of ${workflow.generation.declaredUnits} batches validated; ${workflow.generation.reusedUnits} reused`)}}</p>
+      <p>{{s.t('批次校验不是整机验证。完整设计仍需通过全部检查。','Batch validation is not engineering verification. The complete design must still pass all checks.')}}</p>
+      <p v-if="workflow?.generationState==='exhausted'" data-testid="generation-exhausted">{{s.t('本次尝试无法在剩余预算内继续。记录已保留；重新开始会创建新的生成。','This attempt cannot continue within its remaining budget. Records are preserved; Start over creates a new generation.')}}</p>
+      <div class="generation-actions">
+        <button v-if="!running && workflow?.status==='error' && workflow.canResume && !s.dirty && !s.conflict" type="button" :disabled="s.busy" @click="s.resumeGeneration()" data-testid="resume-generation">{{s.t('继续已保存的生成','Resume saved generation')}}</button>
+        <button v-if="!running && workflow?.status==='error'" type="button" :disabled="s.busy" @click="s.run('design')" data-testid="start-over-generation">{{s.t('重新开始','Start over')}}</button>
+        <button v-if="running && workflow?.canCancel" type="button" :disabled="s.busy || workflow.cancellationPending" @click="s.cancelGeneration()" data-testid="cancel-generation">{{workflow.cancellationPending?s.t('正在停止…','Stopping…'):s.t('停止生成','Cancel generation')}}</button>
+      </div>
+    </section>
+    <div v-else-if="running" class="generation-activity" role="status" data-testid="generation-activity">
       <div class="activity-title"><span class="activity-dot"/><strong>{{phase}}</strong><span class="elapsed"><Clock3 :size="12"/>{{elapsed}}</span></div>
       <div class="activity-meta"><span>{{s.t('AI 正在处理你的设计','AI is working on your design')}}</span><span v-if="workflow?.inference?.outputCharacters">{{workflow.inference.outputCharacters.toLocaleString()}} {{s.t('字符已收到','characters received')}}</span></div>
       <p v-if="workflow?.inference?.retryReason==='output-truncated'" data-testid="truncation-status">{{s.t('上一轮响应触及输出上限，未形成完整设计。','The previous response reached its output limit without a complete design.')}} <template v-if="workflow.inference.phase!=='truncated'">{{s.t('正在用更大的预算重试；仍需通过完整检查。','Retrying with a larger budget; all checks still apply.')}}</template></p>
@@ -52,3 +69,10 @@ const outputs=[
     <footer><Check :size="14"/><span>{{s.t('先预览，再确认。AI 不会替你批准制造。','Preview first. Confirm explicitly. AI never authorizes manufacturing for you.')}}</span></footer>
   </aside>
 </template>
+<style scoped>
+.generation-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.generation-actions button{border:1px solid currentColor;border-radius:8px;background:transparent;color:inherit;padding:8px 12px;min-height:40px;cursor:pointer}
+.generation-actions button:disabled{opacity:.55;cursor:default}
+.generation-actions button:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+@media(prefers-reduced-motion:no-preference) and (hover:hover){.generation-actions button:active:not(:disabled){transform:scale(.97)}}
+</style>
