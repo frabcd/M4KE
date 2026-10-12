@@ -641,8 +641,8 @@
       "bytes": 8809
     },
     "server/studio-service.mjs": {
-      "sha256": "8b22bf8511b845491a2de0bba63700d6bc604e54fad0d58086bb4208b7c8cc50",
-      "bytes": 86722
+      "sha256": "e160a2ddac18275c708833dae02648890106d2e9cdf00a2d3c3240883258bfa6",
+      "bytes": 86971
     },
     "server/studio-skills.mjs": {
       "sha256": "beee1bf73351a6ddb4624ffd2548654b4ea22c9d461108b0146f7262b286f036",
@@ -717,20 +717,20 @@
       "bytes": 794
     },
     "skills/prompt-to-cad/runtime-refinement.md": {
-      "sha256": "4d81b2a7b2af365d6005025ce94f5a48369b783ce3395a728290b3cb9434fab3",
-      "bytes": 5706
+      "sha256": "e54af520612a30fbeaa4b5d8f7df0d673894c9c6c311cc5168ad39b78cfc90dd",
+      "bytes": 6060
     },
     "src/App.vue": {
-      "sha256": "6787eeb048f0204ad053b73d4ea03c9f68225d6b3917d797431d1250158f7027",
-      "bytes": 29832
+      "sha256": "2c635faa10e42704574da1eb62d71f2e422c02d8559f6e46f26f6e81103800ad",
+      "bytes": 29633
     },
     "src/components/AssemblyTutorial.vue": {
       "sha256": "9e9d568534f3b5fbcac63f3598b72faa0aaaaa5fecacbfd82c831b2dcfc876a6",
       "bytes": 5330
     },
     "src/components/AssistantComposer.vue": {
-      "sha256": "7e2d83e26fe7e7d55ed719c0d366ad05a1b34fdc4e87653dbee1ed0e82ddb322",
-      "bytes": 13744
+      "sha256": "86e1b84539417902dae80f0e8807b7efb9ddd80e32334b1d449d3def91a623e3",
+      "bytes": 13137
     },
     "src/components/AuthoredBuild.vue": {
       "sha256": "69fe7adf495d3d2814c68eec2e0ad21f3106774594c9477a531bfbcbbc1cc71f",
@@ -741,8 +741,8 @@
       "bytes": 6830
     },
     "src/components/BriefPreview.vue": {
-      "sha256": "a242a239357724994dfc4bf6afde532d0b29903617bc507761b7cbbaf6d246e7",
-      "bytes": 6502
+      "sha256": "4787953299d102b5dfb70bf34b76ed83446d846db046a7c977932f9be4516bc4",
+      "bytes": 6375
     },
     "src/components/BuildAppearance.vue": {
       "sha256": "2d2d6c46716435016d089da71491a2eb88751ef1c920a4734318edc56441d4c6",
@@ -873,8 +873,8 @@
       "bytes": 4686
     },
     "src/studio/store.ts": {
-      "sha256": "c78ff33f0fde09810930cecc1b425ab7267e170e4702aff87f192427900566a4",
-      "bytes": 28797
+      "sha256": "a45d67c745a179aca95b987063265b53a4711f80573dd285c2f2071bed09b5e0",
+      "bytes": 28772
     },
     "src/studio/types.ts": {
       "sha256": "d8eedf98a039a27f16f1d49eaee56dd2cd963b7956a43c56f71ec78e89414a45",
@@ -1265,8 +1265,8 @@
       "bytes": 24478
     },
     "tests/studio-shell-e2e.mjs": {
-      "sha256": "6608897d1ae12c0871dd9519c0ccd3238221cf1d97c55859fa8afce5126cad58",
-      "bytes": 47099
+      "sha256": "fe97bbad2247e7d11e6e0ce16f3a158e3f1810335658b72c1671486a2c926d1f",
+      "bytes": 48860
     },
     "tests/studio-union.test.mjs": {
       "sha256": "bc6171a7ea0585a7ddc0c52271ff9b05c3fc58fcca0087a9e750eba002614fe2",
@@ -1349,8 +1349,8 @@
       "bytes": 11712
     },
     "texting.txt": {
-      "sha256": "d18b0a25f1e529eb3359d8d488cde92fa9eadc0ea7af93de72a458fccd6a97a3",
-      "bytes": 29956
+      "sha256": "8521aa6a340a8b905b0a5c0b2dfff693b1b2dfc13d4efe043e62c487e1b6532e",
+      "bytes": 31639
     },
     "tsconfig.json": {
       "sha256": "5254b6412d77d8bcbcf50652402d4ee45a1379d3335cb3c155367e886961e51c",
