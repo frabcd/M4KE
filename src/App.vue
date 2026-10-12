@@ -166,6 +166,27 @@ async function create() {
         }}</span
         ><ChevronRight :size="13" />
       </button>
+    <nav
+      class="phase-navigation"
+      :aria-label="s.t('设计流程', 'Design workflow')"
+    >
+      <button
+        v-for="(phase, index) in stages"
+        :key="phase.id"
+        :data-stage="phase.id"
+        :class="{ active: s.stage === phase.id }"
+        :aria-current="s.stage === phase.id ? 'step' : undefined"
+        :disabled="
+          phase.id !== 'workspace' &&
+          ((!s.project && !s.job) || (index > 1 && !hasModel))
+        "
+        @click="go(phase.id)"
+      >
+        {{ s.t(phase.zh, phase.en) }}</button
+      ><span class="phase-tail">{{
+        s.project ? "R" + s.project.revision : s.t("离线优先", "Local workspace")
+      }}</span>
+    </nav>
       <div class="header-spacer" />
       <span class="runtime-dot" :class="{ ready: s.cap?.configured }" /><span
         class="desktop-only"
@@ -194,28 +215,7 @@ async function create() {
         <Globe :size="14" />{{ s.locale === "zh" ? "EN" : "中文" }}
       </button>
     </header>
-    <nav
-      class="phase-navigation"
-      :aria-label="s.t('设计流程', 'Design workflow')"
-    >
-      <button
-        v-for="(phase, index) in stages"
-        :key="phase.id"
-        :data-stage="phase.id"
-        :class="{ active: s.stage === phase.id }"
-        :aria-current="s.stage === phase.id ? 'step' : undefined"
-        :disabled="
-          phase.id !== 'workspace' &&
-          ((!s.project && !s.job) || (index > 1 && !hasModel))
-        "
-        @click="go(phase.id)"
-      >
-        <span>{{ String(index + 1).padStart(2, "0") }}</span
-        >{{ s.t(phase.zh, phase.en) }}</button
-      ><span class="phase-tail">{{
-        s.project ? "R" + s.project.revision : s.t("离线优先", "Local workspace")
-      }}</span>
-    </nav>
+
     <div v-if="s.error" class="global-alert error" role="alert">
       <AlertTriangle :size="16" /><span>{{ serviceOffline ? s.t("暂时无法连接 DGX。输入内容会保留；连接恢复后再继续。", "DGX is temporarily unreachable. Your input stays here; continue after reconnecting.") : s.error }}</span
       ><details v-if="serviceOffline" class="connection-details"><summary>{{ s.t("连接详情", "Connection details") }}</summary><p>{{ s.error }}</p></details><button
@@ -455,7 +455,7 @@ async function create() {
               {{ s.t("电路与连线", "Wiring") }}
             </button>
           </div>
-          <button v-if="hasModel && s.view.viewMode === 'model'" class="sandbox-toggle" data-testid="open-driving-sandbox" :aria-expanded="drivingOpen" @click="drivingOpen = !drivingOpen">{{s.t(drivingOpen?'关闭行驶仿真':'打开行驶仿真（估算）',drivingOpen?'Close driving sandbox':'Open driving sandbox (estimated)')}}</button>
+          <button v-if="hasModel && s.view.viewMode === 'model'" class="sandbox-toggle" data-testid="open-driving-sandbox" :aria-expanded="drivingOpen" @click="drivingOpen = !drivingOpen">{{s.t(drivingOpen?'关闭行驶仿真':'打开行驶仿真（估算）',drivingOpen?'Close driving sandbox':'Driving sandbox (estimated)')}}</button>
           <span class="model-state" :class="{ candidate: s.showCandidate }">{{
             s.showCandidate
               ? s.t("候选预览 · 未应用", "Candidate · not applied")
@@ -472,7 +472,7 @@ async function create() {
             <PanelRight :size="16" />
           </button>
           <button
-            class="primary workspace-confirm"
+            class="workspace-confirm"
             v-if="s.stage === 'refine'"
             data-testid="confirm-design"
             :disabled="

@@ -571,6 +571,29 @@ try {
     },
   );
   await check(
+    "inspection starts compact, with properties first and an expandable assistant",
+    async () => {
+      await row("Printed base").locator(".tree-select").click();
+      const disclosure = page.locator('.inspector details.explanation');
+      assert.equal(await disclosure.count(), 1, 'Rationale belongs in a disclosure');
+      assert.equal(await disclosure.getAttribute('open'), null);
+      assert(await page.locator('.property-grid').isVisible());
+      assert.equal(await page.locator('.inspector').getByText(parts[0].explanation.purpose, {exact:true}).isVisible(), false);
+      const toggle = page.getByTestId('assistant-expand');
+      assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+      const compactHeight = (await page.locator('.assistant-composer').boundingBox()).height;
+      assert(compactHeight < 85, 'Idle assistant should leave room for the model');
+      await page.getByTestId('ai-input').fill('An unsent inspection question');
+      assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
+      await toggle.click();
+      assert.equal(await page.getByTestId('ai-input').inputValue(), 'An unsent inspection question');
+      await toggle.click();
+      await page.getByTestId('ai-input').fill('');
+      await disclosure.locator('summary').click();
+      await page.locator('.inspector').getByText(parts[0].explanation.purpose, {exact:true}).waitFor();
+    },
+  );
+  await check(
     "printed/purchased multiselect, active inspector, missing old rationale",
     async () => {
       await row("Printed base").locator(".tree-select").click();
@@ -723,6 +746,14 @@ try {
       assert.equal(project.designHash, hash);
       assert.equal(project.revision, revision);
       await page.getByTestId('candidate-discussion').waitFor();
+      await page.getByTestId('assistant-expand').click();
+      assert(await page.getByTestId('candidate-discussion').isVisible(), 'Collapsed assistant must retain candidate status');
+      assert(await page.locator('.assistant-composer').evaluate(el => {
+        const form = el.querySelector('form').getBoundingClientRect();
+        const header = el.querySelector('header').getBoundingClientRect();
+        return form.width > el.clientWidth / 2 && form.left >= header.right;
+      }), 'Candidate status must not displace the compact input into the narrow header column');
+      await page.getByTestId('assistant-expand').click();
       assert.equal(await page.getByTestId('ai-mode').inputValue(),'ask');
       await row('Candidate-only cap').locator('.tree-select').click();
       await page.waitForTimeout(500);
@@ -1055,6 +1086,8 @@ try {
       await page.screenshot({path:path.join(out,'workspace-laptop.png')});
       await page.emulateMedia({ reducedMotion: "reduce" });
       await page.setViewportSize({ width: 390, height: 844 });
+      assert(await page.locator('.app-header').evaluate(el => el.getBoundingClientRect().height <= 77),
+        'Mobile header must keep utilities on one row above navigation');
       assert(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
