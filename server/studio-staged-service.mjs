@@ -62,6 +62,14 @@ export function buildStagedMessages({unit,contextSnapshot,state={}}){
   if(kind==='plan'&&data.electricalProfiles?.controlProfiles?.some(p=>isDeepStrictEqual(p,data.electricalProfiles.controlProfile))){
    data.electricalProfiles={...data.electricalProfiles};delete data.electricalProfiles.controlProfile;
   }
+  if(kind==='plan'&&Array.isArray(data.nativeLibrary?.data?.records)){
+   // The descriptor repeats type/library + the adjacent source hash. Keep every
+   // distinct field, including original source bounds needed for placement.
+   data.nativeLibrary={...data.nativeLibrary,data:{...data.nativeLibrary.data,records:data.nativeLibrary.data.records.map(r=>{
+    if(!isDeepStrictEqual(r.shape,{type:'library',sourceSha256:r.sourceSha256}))return r;
+    const {shape,...record}=r;return record;
+   })}};
+  }
   // Held metadata references cannot be engineering sources. The complete
   // originals remain frozen and hash-bound in the checkpoint.
   if(kind!=='plan'){

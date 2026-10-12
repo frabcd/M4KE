@@ -65,6 +65,14 @@ test('planning disclosures survive durable stages and final assembly without del
  const saved=await c.store.inspect({projectId:c.identity.identity.projectId,generationId:result.generationId});
  assert.deepEqual(saved.state.readiness,r);assert.deepEqual(saved.state.plan.unknowns,c.p.unknowns);
 });
+test('truncated planning uses only its remaining bounded attempt and never admits partial JSON',async()=>{
+ const c=await setup(1),base=c.infer;let attempts=0;c.buildMessages=({diagnostic})=>[{role:'user',content:diagnostic||'Fixture'}];
+ c.infer=async args=>{if(args.unit.key==='plan'&&++attempts===1){c.calls.push('plan');return {content:'{"parts":[',doneReason:'length'};}if(args.unit.key==='plan'){assert.match(JSON.parse(args.messages.at(-1).content).validationError,/complete compact JSON/);assert.equal(args.config.numPredict,4000);}return base(args);};
+ const result=await runStagedGeneration(c);assert.equal(result.status,'accepted');assert.equal(attempts,2);assert.equal(c.calls.filter(k=>k==='readiness').length,1);
+ const saved=await c.store.inspect({projectId:c.identity.identity.projectId,generationId:result.generationId});assert.equal(saved.state.reservations.filter(r=>r.unitKey==='plan').length,2);assert.equal(saved.state.reservations.find(r=>r.unitKey==='plan').outcome,'length');
+ const d=await setup(1),normal=d.infer;let rejected=0;d.infer=args=>args.unit.key==='plan'?(rejected++,{content:'{"parts":[',doneReason:'length'}):normal(args);
+ await assert.rejects(()=>runStagedGeneration(d),e=>!e.canResume);assert.equal(rejected,2);assert.ok(!d.calls.includes('part-0'));
+});
 test('truncated second batch splits once without regenerating first batch',async()=>{
  const c=await setup(),base=c.infer;c.infer=async args=>{if(args.unit.key==='part-1'){c.calls.push('part-1');return {content:'{"items":[',doneReason:'length'};}return base(args);};
  const result=await runStagedGeneration(c);assert.equal(result.status,'accepted');assert.equal(c.calls.filter(k=>k==='part-0').length,1);assert.ok(c.calls.includes('part-1~0'));assert.ok(c.calls.includes('part-1~1'));assert.equal(result.spec.parts.length,5);

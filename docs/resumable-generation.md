@@ -154,3 +154,12 @@ CAD artifact establishes visual quality or physical operation. Latest isolated
 Linux source regression:655 passed,20 skipped,0 failures. Actual full-catalog car
 trial v3 stopped after300.8s with rejected fabricated catalog identities, before
 CAD. A bounded retest is pending; this is not a five-minute success benchmark.
+
+Planning truncation may consume only its remaining second attempt, using compact
+output guidance. Both attempts keep the4000-token ceiling and shared durable
+budget; a second truncation stops without partial admission. Part split behavior
+is unchanged. Exactly duplicate native-library descriptors may be omitted from
+planning; original bounds/frame and all distinct fields remain, with full original
+records in later stages and the hash-bound checkpoint. Real context replay with
+retry diagnostic fits65094bytes under the unchanged65536-byte guard. Linux source
+regression658 passed,20 skipped,0 failed. End-to-end car acceptance remains pending.

@@ -41,7 +41,7 @@ export async function runStagedGeneration({identity,contextSnapshot,store,infer,
       const response=await infer({unit,schema:unit.key==='readiness'?schema:{anyOf:[schema,QUESTIONS_SCHEMA]},messages,config:{numPredict:unit.tokenLimit,timeoutMs:reservation.timeoutMs,numCtx:65536},signal:combined,onProgress:()=>{}});
       combined.throwIfAborted();
       const outcome=response.doneReason==='length'?'length':'stop';await h.settle(reservation.reservationId,{elapsedMs:performance.now()-start,outcome,evalCount:response.metrics?.evalCount??null,promptEvalCount:response.metrics?.promptEvalCount??null});settled=true;activeTiming=null;
-      if(outcome==='length')throw Object.assign(stopped('Truncated unit '+unit.key),{truncated:true});
+      if(outcome==='length')throw Object.assign(stopped('Truncated unit '+unit.key,unit.kind==='plan'&&remainingAttempts(unit.key)>0),{truncated:true});
       const raw=parseGenerationJson(response.content);
       if(raw?.status==='questions'){lateQuestions=validateReadiness(raw);throw Object.assign(stopped('Essential clarification required'),{questions:true});}
       return validate(raw);
@@ -53,7 +53,7 @@ export async function runStagedGeneration({identity,contextSnapshot,store,infer,
   async function validatedRequest(unit,schema,validate){
     let diagnostic=null;
     while(remainingAttempts(unit.key)>0){
-      try{return await request(unit,schema,validate,diagnostic);}catch(e){if(signal?.aborted||e.questions||e.transport||e.truncated||e.canResume===false||e.code==='CHECKPOINT_CONFLICT')throw e;if(remainingAttempts(unit.key)<=0)throw Object.assign(e,{canResume:false});diagnostic=String(e.message).slice(0,1000);await progress('retrying',{message:diagnostic});}
+      try{return await request(unit,schema,validate,diagnostic);}catch(e){if(signal?.aborted||e.questions||e.transport||(e.truncated&&unit.kind!=='plan')||e.canResume===false||e.code==='CHECKPOINT_CONFLICT')throw e;if(remainingAttempts(unit.key)<=0)throw Object.assign(e,{canResume:false});diagnostic=e.truncated?'Plan exceeded its output limit. Return complete compact JSON: brief interfaceIntent, concise new disclosures, prerequisite IDs only. Do not repeat source data or omit functional hardware/connections. Keep the same request and source facts.':String(e.message).slice(0,1000);await progress('retrying',{message:diagnostic});}
     }
     throw stopped('Retry budget exhausted for '+unit.key);
   }
