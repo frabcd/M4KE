@@ -68,10 +68,34 @@ function requestFixture(url, options = {}) {
 
 const sample=()=>({schemaVersion:1,title:'Test toy',description:'A test solid',units:'mm',requirements:[{id:'R1',text:'A dimensioned toy'}],assumptions:[],unknowns:['Physical test pending'],questions:[],parts:[{id:'body',name:'Body',kind:'printed',material:'PLA',color:'#123456',shape:{type:'box',size:[40,30,4]},position:[0,0,0],rotation:[0,0,0]}],assembly:[{id:'inspect',title:'Inspect',partIds:['body'],requires:[],instructions:['Measure the part.'],checks:['Compare to the drawing.']}]});
 
+for(const mode of ['design','patch'])test(`${mode}: oversized valid JSON is rejected without replay or accepted hash`,async()=>{
+  const payload=mode==='patch'?{updates:[{partId:'body',changes:{position:[0,0,5]}}]}:sample();
+  const content=JSON.stringify(payload)+' '.repeat(120000);
+  const f=await fixture({content});
+  try{
+    const response=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json',connection:'close'},body:JSON.stringify({request:'toy',...(mode==='patch'?{previousSpec:sample(),repairErrors:['Geometry fixture failed']}:{})})});
+    assert.equal(response.status,422);
+    assert.match((await response.json()).error,/120000-character/);
+    assert.equal(f.calls.length,1);
+    const files=await readdir(path.join(f.root,'data/design-runs'));
+    const receipt=JSON.parse(await readFile(path.join(f.root,'data/design-runs',files.find(x=>x.endsWith('.json'))),'utf8'));
+    assert.equal(receipt.status,'rejected');assert.equal(receipt.designHash,null);
+    assert.equal(receipt.attempts[0].content.length,120000);assert.equal(receipt.attempts[0].contentTruncated,true);
+  }finally{await f.close();}
+});
+
+test('complete design at the capture boundary remains accepted',async()=>{
+  const raw=JSON.stringify(sample()),f=await fixture({content:raw.padEnd(120000)});
+  try{
+    const response=await requestFixture(f.url+'/api/studio/design',{method:'POST',headers:{'content-type':'application/json',connection:'close'},body:JSON.stringify({request:'toy'})});
+    assert.equal(response.status,200);assert.match((await response.json()).designHash,/^[a-f0-9]{64}$/);assert.equal(f.calls.length,1);
+  }finally{await f.close();}
+});
+
 async function fixture(options={}){
   const root=await mkdtemp(path.join(tmpdir(),'m4ke-studio-'));
   const calls=[];
-  const handle=createStudioService({root,getSettings:()=>({endpoint:'http://127.0.0.1:11434',model:'qwen3.8:27b'}),getModels:async()=>{if(options.tagDelay)await new Promise(r=>setTimeout(r,options.tagDelay));return [{name:options.modelName||'qwen3.8:27b',digest:'fixture'}];},localFetch:async(...args)=>{calls.push(args);if(options.onInfer)await options.onInfer(root,calls.length);return {message:{content:JSON.stringify(typeof options.reply==='function'?options.reply(calls.length):options.reply||sample())},eval_count:50,done_reason:typeof options.doneReason==='function'?options.doneReason(calls.length):options.doneReason||'stop'};},body:async req=>{let b='';for await(const c of req)b+=c;return JSON.parse(b);},json:(res,status,data)=>{res.writeHead(status,{'content-type':'application/json'});res.end(JSON.stringify(data));}});
+  const handle=createStudioService({root,getSettings:()=>({endpoint:'http://127.0.0.1:11434',model:'qwen3.8:27b'}),getModels:async()=>{if(options.tagDelay)await new Promise(r=>setTimeout(r,options.tagDelay));return [{name:options.modelName||'qwen3.8:27b',digest:'fixture'}];},localFetch:async(...args)=>{calls.push(args);if(options.onInfer)await options.onInfer(root,calls.length);return {message:{content:options.content??JSON.stringify(typeof options.reply==='function'?options.reply(calls.length):options.reply||sample())},eval_count:50,done_reason:typeof options.doneReason==='function'?options.doneReason(calls.length):options.doneReason||'stop'};},body:async req=>{let b='';for await(const c of req)b+=c;return JSON.parse(b);},json:(res,status,data)=>{res.writeHead(status,{'content-type':'application/json'});res.end(JSON.stringify(data));}});
   const server=http.createServer(async(req,res)=>{try{if(!await handle(req,res,new URL(req.url,'http://localhost').pathname,options.signal)){res.writeHead(404);res.end();}}catch(e){res.writeHead(e.status||500,{'content-type':'application/json'});res.end(JSON.stringify({error:e.message}));}});
   await new Promise(r=>server.listen(0,'127.0.0.1',r));const url=`http://127.0.0.1:${server.address().port}`;
   return {root,url,calls,close:async()=>{await new Promise(r=>server.close(r));await rm(root,{recursive:true,force:true});}};

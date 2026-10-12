@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "publicationApproved": false,
+  "publicationApproved": true,
   "licenseApproved": true,
   "originalCodeLicense": "MIT",
-  "scope": "Private source-review staging; includes hash-pinned numerical interface metadata, not model weights, native supplier CAD, user data or deployed settings. No third-party redistribution rights or physical-fit claim.",
+  "scope": "Owner-approved public source release; includes hash-pinned numerical interface metadata, not model weights, native supplier CAD, user data or deployed settings. No third-party redistribution rights or physical-fit claim.",
   "projections": [
     "UTF-8 source text is canonicalized to LF to match Git; private working history is excluded.",
     "Staged .gitignore adds private setup/source-asset exclusions without changing working .gitignore.",
@@ -201,8 +201,8 @@
       "bytes": 9644
     },
     "docs/skill-integration-handoff.md": {
-      "sha256": "6a5cc06c55460ffa1fbd0c8fdd34e97c368763dd3e3874a084e2b9725a294614",
-      "bytes": 18289
+      "sha256": "e5001fbce2ae7a527a49585066e63e1f44937fbef58eeff098baae618e0197a9",
+      "bytes": 21561
     },
     "docs/source-reconstruction.md": {
       "sha256": "2052ec6ef4c870638387733d0f9c3f7413f9b4c9eb44a6a38c5eb375431b152c",
@@ -665,8 +665,8 @@
       "bytes": 8816
     },
     "server/studio-service.mjs": {
-      "sha256": "b9aa98a9b04051a5d38c0bea5ef15438ba1620679484cae1f45a41151107bb8b",
-      "bytes": 83513
+      "sha256": "32520b9db5d261824c7ad8314cc486068f51c56ec8a563707de042c6fb8ed5c2",
+      "bytes": 84036
     },
     "server/studio-skills.mjs": {
       "sha256": "beee1bf73351a6ddb4624ffd2548654b4ea22c9d461108b0146f7262b286f036",
@@ -677,8 +677,8 @@
       "bytes": 8327
     },
     "server/studio-staged-service.mjs": {
-      "sha256": "4998c012b421197a375526fdb9cd3618e349ad798d7f305a3255740511ccd3ff",
-      "bytes": 12293
+      "sha256": "6c666f5fcd36fde7c432761dca4f27f0438bda8a5ab8423a7b66922343138ea6",
+      "bytes": 13617
     },
     "server/studio-usability.mjs": {
       "sha256": "26af567ba1c7098927aa3f942b4772dce2cf5d734bc842cbec040999026be16f",
@@ -741,28 +741,28 @@
       "bytes": 6211
     },
     "skills/prompt-to-cad/runtime-design.md": {
-      "sha256": "b6af11b7d4c799e1641718c958ca961814283de7477d83849aa4f0c963f348f1",
-      "bytes": 31564
+      "sha256": "599c7addd5e8197b9b38d8ddc843bfbd48eb3cc1c37e0390214bfd766acf003c",
+      "bytes": 31793
     },
     "skills/prompt-to-cad/runtime-library.md": {
       "sha256": "d9e475d60c69ae3fc0f6f430cb92cf373adf768fbb320681eeffb1b49642ddd9",
       "bytes": 794
     },
     "skills/prompt-to-cad/runtime-refinement.md": {
-      "sha256": "4d81b2a7b2af365d6005025ce94f5a48369b783ce3395a728290b3cb9434fab3",
-      "bytes": 5706
+      "sha256": "942194801a7c4e5d5b81f05f5cee8de00e9f6df06962c6a9b81a7933b71eb7ac",
+      "bytes": 6745
     },
     "src/App.vue": {
-      "sha256": "6787eeb048f0204ad053b73d4ea03c9f68225d6b3917d797431d1250158f7027",
-      "bytes": 29832
+      "sha256": "2c635faa10e42704574da1eb62d71f2e422c02d8559f6e46f26f6e81103800ad",
+      "bytes": 29633
     },
     "src/components/AssemblyTutorial.vue": {
       "sha256": "9e9d568534f3b5fbcac63f3598b72faa0aaaaa5fecacbfd82c831b2dcfc876a6",
       "bytes": 5330
     },
     "src/components/AssistantComposer.vue": {
-      "sha256": "7e2d83e26fe7e7d55ed719c0d366ad05a1b34fdc4e87653dbee1ed0e82ddb322",
-      "bytes": 13744
+      "sha256": "86e1b84539417902dae80f0e8807b7efb9ddd80e32334b1d449d3def91a623e3",
+      "bytes": 13137
     },
     "src/components/AuthoredBuild.vue": {
       "sha256": "69fe7adf495d3d2814c68eec2e0ad21f3106774594c9477a531bfbcbbc1cc71f",
@@ -773,8 +773,8 @@
       "bytes": 6830
     },
     "src/components/BriefPreview.vue": {
-      "sha256": "ed613ab274422dd488968e6f73a515d94feb505c27ce3c9889b43e7118b240a6",
-      "bytes": 9895
+      "sha256": "a1bffc40897abf92ba5bdda1079c2e723fad082feb135006d736f93e1c7e112b",
+      "bytes": 9954
     },
     "src/components/BuildAppearance.vue": {
       "sha256": "2d2d6c46716435016d089da71491a2eb88751ef1c920a4734318edc56441d4c6",
@@ -905,8 +905,8 @@
       "bytes": 4686
     },
     "src/studio/store.ts": {
-      "sha256": "f2fab6dedc5589f9d10ce18dab4f683b33225615ddfa22c0ca88021bf96817c9",
-      "bytes": 30246
+      "sha256": "a085cd533c71008b1a6505d0fadd89a5cc3b18fb2749b8c0f9f139bbf94f899b",
+      "bytes": 30221
     },
     "src/studio/types.ts": {
       "sha256": "b2ed6f16ef6f3de330df553d69d4bb4464f1ad2764c534fcc5b30c223307f7bf",
@@ -1325,16 +1325,16 @@
       "bytes": 14470
     },
     "tests/studio-service.test.mjs": {
-      "sha256": "3c9c07872d3d0d0a74a0108d76e07bf5fec292309c1e6559a827ddaf34aeb3cc",
-      "bytes": 30202
+      "sha256": "9ddb2a33b6681f4f2e3402e38f6ce0faba2e9b35ec2eecd7f525b904660e4da6",
+      "bytes": 31913
     },
     "tests/studio-shell-e2e.mjs": {
-      "sha256": "110c2604ff3ae15fb26b18d7f29403de121b1f82f1f4f6add781448848f499c4",
-      "bytes": 50827
+      "sha256": "6cbbe94754a328a2b6de0129eece286d503ce9245dbf45ac1980b90e78f47681",
+      "bytes": 53679
     },
     "tests/studio-staged-context.test.mjs": {
-      "sha256": "d1874811283a1102dce61ae71402cd9909dec97d776e2153798431d22ec81f6d",
-      "bytes": 3185
+      "sha256": "00c130dd47524c7ffd2af7a2aec298e9c5f3f5df23a4bcf06767f39662b97575",
+      "bytes": 6728
     },
     "tests/studio-staged-generation.test.mjs": {
       "sha256": "ab6affe235af83abb1472f38ca01c3ea048cdd230140a6638c999e89dcff78a4",
@@ -1425,8 +1425,8 @@
       "bytes": 11712
     },
     "texting.txt": {
-      "sha256": "4b333fb9ad8c5171336aa4defa11b26907de82537e943977cf88719c89898ea2",
-      "bytes": 31839
+      "sha256": "2c425c2dc065fbce0a2b898a12e53329a9ece4a0200bd3b28d0d426a57d199d5",
+      "bytes": 39190
     },
     "tsconfig.json": {
       "sha256": "5254b6412d77d8bcbcf50652402d4ee45a1379d3335cb3c155367e886961e51c",

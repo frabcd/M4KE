@@ -108,3 +108,23 @@ These hashes describe the inspected local snapshot, not proof of deployment, adh
 > M4KE is a local small-toy design studio. A configured Qwen model turns a request and essential answers into a bounded editable design specification, using normalized versions of the team's design and verification skills. The studio executes native CAD and scoped deterministic checks, records PASS/FAIL/UNKNOWN evidence, obtains a separate advisory review, and can ask Qwen for bounded geometry corrections without weakening the original tests. It exports revision-matched CAD, a modelled-parts BOM and assembly guidance. The sound-controlled car is a benchmark, not a hard-coded substitute for model design. Unsupported interfaces, incomplete sourcing, manufacturing readiness and physical performance remain explicitly unverified.
 
 This handoff changed documentation only. No service, runtime skill, geometry, source library, model configuration or deployment was modified.
+
+
+## 2026-10-12 — Form templates and five-minute acceptance target
+
+Current source, not a DGX rollout. The design and refinement runtime stages now include compact vehicle, enclosure and desk-mechanism composition patterns. These are adaptable proportions/access patterns, never fixed kits or evidence of fit. Silhouette changes require supported geometry; restrained colours do not substitute for functional parts, walls, mounts, retained axes or checks. Existing JSON fields and request counts remain unchanged. The loader still enforces its 32,000-byte limit; duplicate design instructions were compressed before adding the patterns.
+
+Skills research used the skills.sh leaderboard and read both official source files. Candidates:
+- [frontend-design](https://skills.sh/anthropics/skills/frontend-design), Anthropic: about 976.6K installs at lookup; deliberate subject-specific composition and concise interface copy. Install: `npx skills add anthropics/skills --skill frontend-design`.
+- [webapp-testing](https://skills.sh/anthropics/skills/webapp-testing), Anthropic: about 175.2K installs at lookup; browser inspection, screenshots and functional checks. Install: `npx skills add anthropics/skills --skill webapp-testing`.
+- Source repository: https://github.com/anthropics/skills (about 180.6K stars at lookup). These are UI/testing references; they do not certify CAD or add instructions to the configured local model merely by being installed. No global installation or third-party CAD template was performed. Runtime patterns here are written for M4KE's existing grammar.
+
+Benchmark template (fill with actual measurements, not targets):
+- Exact brief, confirmed answers, model tag/digest, source revision, runtime skill hashes; cold/warm model state.
+- Wall-clock start at submitted complete inputs; end at accepted native CAD and usable preview. Record clarification waiting separately. Price lookup duration and unavailable sources separately.
+- Prompt/output tokens, doneReason, each attempt and phase duration; complete accepted design hash, CAD job status and current-hash reports.
+- Screenshots from front/side/top: proportions and silhouette; coherent colours/edges; real openings and service access. Record human visual acceptance separately from host checks.
+- Native solid/assembly checks, interference, functional clearance and required electrical/BOM checks. Preserve unknown source interfaces and physical tests.
+- Run a simple enclosure, a retained desk mechanism and the original powered car with answered essential inputs. Repeat warm runs and retain failures; compare both success rate and elapsed time with the same inputs/model.
+
+Target: roughly 300 seconds per complete production preview. This is an acceptance goal, not a proven latency or a timeout that discards required geometry. The prior actual 122B clarification run took about 13m20s. At the observed roughly 27.8 output tokens/s, a 10K-token answer alone exceeds five minutes before CAD; successful optimisation needs less repeated output and measured phase work. PR #11 owns opt-in checkpoint/resume; coordinate via texting.txt rather than duplicating or enabling it unbenchmarked. No live benchmark, approved car answers or DGX authentication is available in this source round.
