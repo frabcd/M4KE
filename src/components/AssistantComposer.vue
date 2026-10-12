@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch, onUnmounted } from "vue";
-import { ArrowUp, ChevronDown, MessageSquare, X, Sparkles } from "@lucide/vue";
+import { ArrowUp, ChevronDown, MessageSquare, X } from "@lucide/vue";
 import { useStudio } from "../studio/store";
 import type { Conversation } from "../studio/types";
 const props = defineProps<{brief?: boolean}>();
@@ -111,7 +111,7 @@ async function submit() {
         @click="expanded = !expanded"
         :aria-expanded="expanded"
       >
-        <Sparkles :size="15" /><strong>AI</strong
+        <MessageSquare :size="15" /><strong>AI</strong
         ><span>{{ brief ? s.t("需求问答", "Brief questions") : s.t("设计助手", "Design assistant") }}</span
         ><ChevronDown :size="14" /></button
       ><span class="hint">{{
@@ -121,7 +121,7 @@ async function submit() {
         )
       }}</span>
     </header>
-    <div v-if="expanded" ref="history" class="conversation" aria-live="polite" @scroll="trackScroll">
+    <div v-if="expanded && (s.conversation.length || pending || s.error)" ref="history" class="conversation" aria-live="polite" @scroll="trackScroll">
       <p v-if="!s.conversation.length" class="assistant-welcome">
         {{
           s.t(
@@ -159,7 +159,7 @@ async function submit() {
         <p v-if="entry.questions?.length" class="clarification-boundary">{{ canAnswer(entry) ? s.t("待确认建议，尚未验证兼容性。选择答案会恢复这次修改的零件上下文；发送后才继续。", "Unverified options. Choosing an answer restores this edit's part context; send it to continue.") : s.t("历史追问：版本已改变或这次修改已结束。请提出新的修改，不会重复应用旧答案。", "Historical question: its version changed or the edit ended. Start a new edit; old answers cannot be reapplied.") }}</p>
       </article>
       <div v-if="pending" class="assistant-pending" role="status" data-testid="ai-pending">
-        <div class="assistant-pending-title"><Sparkles :size="14" /><strong>{{ pending.mode === 'ask' ? s.t('正在回复', 'Preparing a reply') : s.t('准备修改建议', 'Preparing a change') }}</strong><span aria-hidden="true">{{ elapsed }}s</span></div>
+        <div class="assistant-pending-title"><MessageSquare :size="14" /><strong>{{ pending.mode === 'ask' ? s.t('正在回复', 'Preparing a reply') : s.t('准备修改建议', 'Preparing a change') }}</strong><span aria-hidden="true">{{ elapsed }}s</span></div>
         <p v-if="pending.mode==='propose'">{{s.t('当前设计保持不变，候选需你确认后应用。','Your current design stays unchanged until you apply the candidate.')}}</p>
         <small>R{{ pending.revision }} · {{ pending.names.length ? pending.names.join(' · ') : s.t('当前项目', 'Current project') }}</small>
       </div>

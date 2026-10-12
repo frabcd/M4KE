@@ -110,7 +110,7 @@ export class StudioViewportController {
     this.renderer.domElement.setAttribute('role', 'application');
     this.renderer.domElement.setAttribute('aria-describedby', 'viewport-instructions');
     this.host.appendChild(this.renderer.domElement);
-    this.scene.background = new THREE.Color('#101827');
+    this.scene.background = new THREE.Color('#343434');
     this.perspective.up.set(0, 0, 1);
     this.orthographic.up.set(0, 0, 1);
     this.camera.position.set(320, -420, 310);
@@ -138,7 +138,7 @@ export class StudioViewportController {
     this.floor = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.ShadowMaterial({opacity: .2}));
     this.floor.receiveShadow = true;
     this.scene.add(this.floor);
-    this.grid = new THREE.GridHelper(1000, 50, 0x354360, 0x202d43);
+    this.grid = new THREE.GridHelper(1000, 50, 0x555555, 0x414141);
     this.grid.rotation.x = Math.PI / 2;
     this.grid.position.z = -.02;
     this.scene.add(this.grid, this.model, this.wires);

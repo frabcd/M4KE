@@ -190,7 +190,7 @@ onMounted(() => {
   </section>
 </template>
 <style scoped>
-.runtime-current { display: grid; gap: 6px; padding: 16px 18px; margin-bottom: 16px; border: 1px solid #ffffff1a; border-radius: 14px; background: #ffffff06; }
+.runtime-current { display: grid; gap: 6px; padding: 16px 18px; margin-bottom: 16px; border: 1px solid #ffffff1a; border-radius: 4px; background: var(--field); }
 .runtime-current small, .runtime-current span { font-size: 12px; color: var(--muted, #b0bac9); }
 .runtime-current strong { font-size: 16px; overflow-wrap: anywhere; }
 .runtime-current .runtime-unsaved { color: #f0c58f; }

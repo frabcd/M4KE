@@ -56,7 +56,7 @@ onBeforeUnmount(() => { pause(); s.assemblyPlayback = null; document.removeEvent
   </div>
 </template>
 <style scoped>
-.assembly-player{position:absolute;z-index:3;bottom:66px;left:50%;transform:translateX(-50%);width:min(490px,calc(100% - 28px));padding:12px 16px;border:1px solid #8aa5cc40;border-radius:16px;background:#0d1525f5;box-shadow:0 14px 40px #0005;backdrop-filter:blur(16px)}
-.assembly-player-heading{display:flex;gap:8px;flex-direction:column}.assembly-player-heading span{color:#95b8e8;font-size:10px;letter-spacing:.07em}.assembly-player-heading strong{color:#eff5ff;font-size:14px;font-weight:550}.assembly-player-controls{display:flex;align-items:center;gap:8px;margin:8px 0}.assembly-player-controls input{flex:1;min-width:40px;accent-color:#91baff;cursor:pointer}.assembly-player small{display:block;color:#a4b0c3;font-size:10px;line-height:1.5}
-@media(prefers-reduced-transparency:reduce){.assembly-player{backdrop-filter:none;background:#0d1525}}
+.assembly-player{position:absolute;z-index:3;bottom:66px;left:50%;transform:translateX(-50%);width:min(490px,calc(100% - 28px));padding:12px 16px;border:1px solid var(--line);border-radius:4px;background:#303030;box-shadow:0 4px 16px #0003}
+.assembly-player-heading{display:flex;gap:8px;flex-direction:column}.assembly-player-heading span{color:#bdbdbd;font-size:10px;letter-spacing:.07em}.assembly-player-heading strong{color:#eff5ff;font-size:14px;font-weight:550}.assembly-player-controls{display:flex;align-items:center;gap:8px;margin:8px 0}.assembly-player-controls input{flex:1;min-width:40px;accent-color:var(--accent);cursor:pointer}.assembly-player small{display:block;color:#a4b0c3;font-size:10px;line-height:1.5}
+@media(prefers-reduced-transparency:reduce){.assembly-player{backdrop-filter:none;background:#303030}}
 </style>

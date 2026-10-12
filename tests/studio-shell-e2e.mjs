@@ -1018,6 +1018,25 @@ try {
       await page.screenshot({
         path: path.join(out, "workspace-refine-desktop.png"),
       });
+      // Laptop workbench: the model and primary controls must coexist without
+      // depending on scrolling, and expanding conversation must remain bounded.
+      await page.setViewportSize({ width: 1366, height: 768 });
+      const laptop = await page.evaluate(() => {
+        const rect = selector => {
+          const r = document.querySelector(selector).getBoundingClientRect();
+          return {top:r.top, bottom:r.bottom, left:r.left, right:r.right, height:r.height};
+        };
+        return {viewport:rect('.studio-viewport'), composer:rect('.assistant-composer'),
+          confirm:rect('[data-testid="confirm-design"]'), send:rect('[data-testid="ai-send"]'),
+          width:innerWidth,height:innerHeight};
+      });
+      assert(laptop.viewport.height >= 360, 'Laptop keeps usable model height');
+      assert(laptop.viewport.bottom <= laptop.composer.top + 1, 'Assistant must not cover the model');
+      for (const control of [laptop.confirm,laptop.send]) {
+        assert(control.left >= 0 && control.right <= laptop.width && control.top >= 0 && control.bottom <= laptop.height,
+          'Laptop primary actions must remain on screen');
+      }
+      await page.screenshot({path:path.join(out,'workspace-laptop.png')});
       await page.emulateMedia({ reducedMotion: "reduce" });
       await page.setViewportSize({ width: 390, height: 844 });
       assert(
