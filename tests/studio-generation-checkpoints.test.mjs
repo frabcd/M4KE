@@ -3,6 +3,16 @@ import {mkdtemp,readFile,writeFile,symlink,mkdir} from 'node:fs/promises';import
 import {createGenerationCheckpointStore,generationIdentity,hashGenerationValue} from '../server/studio-generation-checkpoints.mjs';
 import {plan,readiness,payload} from './helpers/staged-generation-fixture.mjs';import {partitionGeneration} from '../server/studio-generation-stages.mjs';
 export const identity=()=>generationIdentity({projectId:randomUUID(),request:'fixture',answers:[],budget:null,mode:'generate',parentDesignHash:null,inputRevision:1,model:{digest:'a'.repeat(64),name:'fixture',settings:{temperature:0}},skillHash:'b'.repeat(64),schemaHash:'c'.repeat(64),sourceHash:'d'.repeat(64),contextHash:hashGenerationValue({fixture:true})});
+test('repair reservation atomically invalidates units and retains bounded repair evidence',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'m4ke-atomic-repair-')),i=identity(),store=createGenerationCheckpointStore({root}),h=await store.create({projectId:i.identity.projectId,identity:i,contextSnapshot:{fixture:true}}),p=plan();
+ await h.saveReadiness(readiness());await h.savePlan(p);const u=partitionGeneration(p)[0];await h.saveUnit({descriptor:u,payload:payload(p,u),dependencyHashes:{plan:hashGenerationValue(p)}});
+ await h.beginRepair({keys:[u.key],reason:'Known fixture failure'});
+ const restored=await createGenerationCheckpointStore({root}).load({projectId:i.identity.projectId,generationId:h.id,identity:i});assert.equal(restored.snapshot().repairRounds,1);assert.equal(restored.snapshot().units.length,0);assert.equal(restored.snapshot().repairContext[u.key].previousPayload.items[0].id,'p0');
+});
+test('identity conflicts carry application HTTP 409 status',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'m4ke-conflict-')),i=identity(),store=createGenerationCheckpointStore({root}),h=await store.create({projectId:i.identity.projectId,identity:i,contextSnapshot:{fixture:true}});
+ await assert.rejects(()=>store.load({projectId:i.identity.projectId,generationId:h.id,identity:generationIdentity({...i.identity,request:'changed'})}),e=>e.status===409);
+});
 test('checkpoint survives restart but rejects changed identity and corrupted payload',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'m4ke-checkpoint-')),i=identity(),store=createGenerationCheckpointStore({root});
  const h=await store.create({projectId:i.identity.projectId,identity:i,contextSnapshot:{fixture:true}});await h.saveReadiness(readiness());await h.savePlan(plan());

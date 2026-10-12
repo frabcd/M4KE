@@ -70,6 +70,13 @@ preserve checkpoint evidence. Never restart a teammate's active workflow.
 
 ## Isolated receipt collector
 
+Checkpoint protocol 2 stores final-repair diagnostics, failed payloads and
+dependency invalidation in one atomic update. Older experimental checkpoints
+require an explicit new generation. Staged decoder schemas use the existing
+Ollama compatibility projection; strict host validation remains authoritative.
+Every staged inference dispatch has its own durable allowance; the legacy
+transport's automatic runner replay is disabled only for staged calls.
+
 After the operator grants the resource slot, start an isolated application with
 an empty project directory and the opt-in flag. The collector does not start the
 application or change its settings. Its data root is the isolated app root (the

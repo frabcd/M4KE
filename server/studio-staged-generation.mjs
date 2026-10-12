@@ -1,7 +1,7 @@
 import {performance} from 'node:perf_hooks';
 import {parseGenerationJson} from './studio-generation-json.mjs';
 import {READINESS_SCHEMA,PLAN_SCHEMA,validateReadiness,validateGenerationPlan,partitionGeneration,schemaForGenerationUnit,validateGenerationUnit,assembleGeneration,dependentUnitKeys} from './studio-generation-stages.mjs';
-import {descriptorFor,dependencyHashes} from './studio-generation-checkpoints.mjs';
+import {descriptorFor,dependencyHashes,canResumeGeneration} from './studio-generation-checkpoints.mjs';
 
 const special=key=>({key,kind:key,ids:[],dependsOn:[],tokenLimit:key==='readiness'?1500:4000,timeoutMs:key==='readiness'?180000:300000});
 function stopped(message,canResume=false){return Object.assign(new Error(message),{canResume});}
@@ -18,7 +18,8 @@ export async function runStagedGeneration({identity,contextSnapshot,store,infer,
   async function request(unit,schema,validate,diagnostic=null){
     current=unit.key;signal?.throwIfAborted();
     const state=h.snapshot(),dependencies=state.units.filter(r=>unit.dependsOn.includes(r.key)).map(r=>({key:r.key,payload:r.payload}));
-    const messages=[...await buildMessages({unit,contextSnapshot:h.context}),{role:'user',content:JSON.stringify({stage:unit.kind,assignedIds:unit.ids,readiness:state.readiness,plan:state.plan,dependencies,validationError:diagnostic,instruction:'Return exactly this stage schema. Preserve the immutable roster, identities and requirements. Do not repeat completed units. If an essential input is missing, return a readiness response with status questions instead.'})}];
+    const repairContext=state.repairContext[unit.key]||state.repairContext[unit.parentKey]||null;
+    const messages=[...await buildMessages({unit,contextSnapshot:h.context}),{role:'user',content:JSON.stringify({stage:unit.kind,assignedIds:unit.ids,readiness:state.readiness,plan:state.plan,dependencies,validationError:diagnostic,repairContext,instruction:'Return exactly this stage schema. Preserve the immutable roster, identities and requirements. Do not repeat completed units. Address the supplied repair diagnostic using the failed payload and current dependencies; do not repeat the failed geometry. If an essential input is missing, return a readiness response with status questions instead.'})}];
     if(Buffer.byteLength(JSON.stringify(messages),'utf8')+unit.tokenLimit+1024>65536)throw stopped('Generation context exceeds the bounded context window.');
     const reservation=await h.reserve({unitKey:unit.key,tokenLimit:unit.tokenLimit,timeoutMs:unit.timeoutMs});
     const timeout=AbortSignal.timeout(reservation.timeoutMs),combined=signal?AbortSignal.any([signal,timeout]):timeout,start=performance.now();let settled=false;
@@ -68,11 +69,11 @@ export async function runStagedGeneration({identity,contextSnapshot,store,infer,
       if(result.spec&&result.issues.length===0){signal?.throwIfAborted();await h.finish('accepted');await progress('accepted');return {status:'accepted',spec:result.spec,generationId:h.id,metrics:h.remaining()};}
       const issues=result.issues||[];
       if(!issues.length||issues.some(i=>i.attribution!=='exact'||!i.unitKeys?.length||i.unitKeys.some(k=>!units.some(u=>u.key===k)))||h.snapshot().repairRounds>=1)throw stopped(issues.map(i=>i.message).join('; ')||'Global admission failed');
-      const changed=[...dependentUnitKeys(units,issues.flatMap(i=>i.unitKeys))];await h.beginRepair();await h.invalidate(changed,issues.map(i=>i.message).join('; ').slice(0,2000));
+      const changed=[...dependentUnitKeys(units,issues.flatMap(i=>i.unitKeys))];await h.beginRepair({keys:changed,reason:issues.map(i=>i.message).join('; ').slice(0,2000)});
     }
   }catch(error){
     if(lateQuestions){await h.finish('questions');return {status:'questions',spec:questionsSpec(lateQuestions),generationId:h.id,metrics:h.remaining()};}
-    const left=h.remaining(),canResume=(error.canResume===true||signal?.aborted)&&remainingAttempts(current)>0&&left.requests>0&&left.requestedOutputTokens>0&&left.activeMs>0;
+    const canResume=Boolean((error.canResume===true||signal?.aborted)&&canResumeGeneration(h.snapshot()));
     await h.finish(canResume?'stopped':'exhausted');await progress(canResume?'stopped':'exhausted',{canResume,message:String(error.message).slice(0,1000)});
     throw Object.assign(error,{generationId:h.id,canResume});
   }

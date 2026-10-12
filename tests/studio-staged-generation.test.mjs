@@ -28,6 +28,13 @@ test('queued cancellation makes no inference call and prompt overflow stops expl
 test('known final error repairs one batch and its dependencies only',async()=>{
  const c=await setup(5);let n=0;c.admit=raw=>++n===1?{spec:null,issues:[{message:'local issue',unitKeys:['part-1'],attribution:'exact'}]}:{spec:validateDesignSpec(raw),issues:[]};const result=await runStagedGeneration(c);assert.equal(result.status,'accepted');assert.equal(c.calls.filter(k=>k==='part-0').length,1);assert.equal(c.calls.filter(k=>k==='part-1').length,2);
 });
+test('global repair sends failed payload and triggering diagnostic after restart',async()=>{
+ const c=await setup(5),base=c.infer;let id,repairCalls=0,admissions=0;
+ c.onProgress=p=>{id=p.generationId;};c.admit=raw=>++admissions===1?{spec:null,issues:[{message:'p3: fixture shoulder missing',unitKeys:['part-1'],attribution:'exact'}]}:{spec:validateDesignSpec(raw),issues:[]};
+ c.infer=async args=>{if(args.unit.key==='part-1'&&c.calls.includes('part-1')){repairCalls++;if(repairCalls===1)throw Error('fixture disconnect during repair');const prompt=JSON.parse(args.messages.at(-1).content);assert.match(JSON.stringify(prompt.repairContext),/shoulder missing/);assert.equal(prompt.repairContext.previousPayload.items[0].id,'p3');}return base(args);};
+ await assert.rejects(()=>runStagedGeneration(c),/disconnect/);
+ const result=await runStagedGeneration({...c,store:createGenerationCheckpointStore({root:c.root}),resumeGenerationId:id});assert.equal(result.status,'accepted');assert.equal(c.calls.filter(k=>k==='part-0').length,1);
+});
 test('late clarification returns no partial geometry and bounded invalid output stops',async()=>{
  const c=await setup(),base=c.infer;c.infer=args=>args.unit.key==='part-1'?response({...readiness(),status:'questions',questions:[{id:'q',question:'Confirm material?'}]}):base(args);
  const result=await runStagedGeneration(c);assert.equal(result.status,'questions');assert.deepEqual(result.spec.parts,[]);

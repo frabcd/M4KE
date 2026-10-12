@@ -70,7 +70,7 @@ export const DESIGN_JSON_SCHEMA = freeze(object({
 // A small enum avoids unconstrained named colours without restoring expensive
 // regex grammars. The authoritative contract still accepts every valid RGB hex.
 const decoderColors=['#000000','#FFFFFF','#FF0000','#00FF00','#0000FF','#FFFF00','#00FFFF','#FF00FF','#FF8000','#800080','#808080','#202020','#247AAB','#F2AC43'];
-function ollamaProjection(value) {
+export function ollamaProjection(value) {
   if (Array.isArray(value)) return value.map(ollamaProjection);
   if (!value || typeof value !== 'object') return value;
   const compatible=Object.fromEntries(Object.entries(value)

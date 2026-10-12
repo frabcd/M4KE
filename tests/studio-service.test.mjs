@@ -30,6 +30,7 @@ test('opt-in staged HTTP concept publishes accepted hash and automatic pricing o
     const start=await(await requestFixture(f.url+`/api/studio/projects/${project.id}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'design',expectedRevision:project.revision})})).json();assert.ok(start.workflow?.generationId,JSON.stringify(start));
     let end;for(let i=0;i<300;i++){end=await(await requestFixture(f.url+`/api/studio/projects/${project.id}`)).json();if(end.workflow.status!=='running')break;assert.equal(end.spec,undefined);await new Promise(r=>setTimeout(r,10));}
     assert.equal(end.workflow.status,'draft',end.workflow.message);assert.equal(end.designHash,designHash(end.spec));assert.equal(end.priceSearch.designHash,end.designHash);assert.equal(f.calls.length,responses.length);assert.equal(end.workflow.canCancel,false);
+    for(const call of f.calls){const format=JSON.parse(call[2].body).format;assert(!JSON.stringify(format).includes('maxLength'));assert(!JSON.stringify(format).includes('pattern'));assert.equal(call[7]?.retryInfrastructure,false);}
   }finally{if(before===undefined)delete process.env.M4KE_STAGED_GENERATION;else process.env.M4KE_STAGED_GENERATION=before;await f.close();}
 });
 test('staged HTTP resume preserves earlier batch and rejects stale project revision',async()=>{

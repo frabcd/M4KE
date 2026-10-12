@@ -16,7 +16,7 @@ test('settlement releases unused time only, retry counters and split children st
  await h.startSplit('part-0');const child=await h.reserve({unitKey:'part-0~0',tokenLimit:3000,timeoutMs:240000});await h.settle(child.reservationId,{elapsedMs:1,outcome:'error'});
  await assert.rejects(()=>h.reserve({unitKey:'part-0~0',tokenLimit:3000,timeoutMs:240000}));await assert.rejects(()=>h.reserve({unitKey:'part-0',tokenLimit:3000,timeoutMs:240000}));
  for(const tokenLimit of [0,-1,NaN])await assert.rejects(()=>h.reserve({unitKey:'part-1',tokenLimit,timeoutMs:240000}));
- await h.beginRepair();await assert.rejects(()=>h.beginRepair());
+ await h.beginRepair({keys:[],reason:'Budget-only fixture'});await assert.rejects(()=>h.beginRepair({keys:[],reason:'Budget-only fixture'}));
 });
 test('active time cannot exceed forty minutes even when requests crash',async()=>{
  const {h}=await setup();
@@ -28,5 +28,5 @@ test('requested output cap persists even when actual output was short',async()=>
  const {h}=await setup();
  const keys=partitionGeneration(h.snapshot().plan).map(u=>u.key);
  for(const key of keys)for(let i=0;i<2;i++){const r=await h.reserve({unitKey:key,tokenLimit:3000,timeoutMs:240000});await h.settle(r.reservationId,{elapsedMs:1,outcome:'error',evalCount:1});}
- assert.equal(h.remaining().requestedOutputTokens,0);await h.beginRepair();await assert.rejects(()=>h.reserve({unitKey:'part-0',tokenLimit:1,timeoutMs:1}),/budget/);
+ assert.equal(h.remaining().requestedOutputTokens,0);await h.beginRepair({keys:[],reason:'Budget-only fixture'});await assert.rejects(()=>h.reserve({unitKey:'part-0',tokenLimit:1,timeoutMs:1}),/budget/);
 });

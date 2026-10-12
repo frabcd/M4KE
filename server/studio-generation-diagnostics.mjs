@@ -1,12 +1,13 @@
 /** Pre-freeze diagnostics; none of these checks award manufacturing evidence. */
-export function geometryIntentIssues(spec) {
+export function geometryIntentDiagnostics(spec) {
  const issues=[];
+ const add=(partId,message)=>issues.push({code:'GEOMETRY_INTENT',partId,message});
  // Deliberately narrow: "vented cover" / "vent insert" are physical pieces.
  // A part named exactly for an empty feature is a high-confidence cutter mistake.
  const emptyFeature=/^(?:(?:vent(?:ilation)?\s+)?slot|vent(?:ilation)?|(?:cable\s+)?opening|(?:mounting\s+)?hole|bore|pocket|cutout)(?:[\s_-]*\d+)?$/i;
  for(const p of spec?.parts||[]) {
   if(p.kind!=='printed'||!['box','cylinder','union'].includes(p.shape?.type))continue;
-  if(emptyFeature.test(String(p.name||'').trim()))issues.push(`${p.id}: "${p.name}" describes empty space but parts[] creates positive material. Model a subtractive pocket or hole on its parent part, remove the standalone cutter part and update assembly references before freezing. A label or moving this block cannot create an opening.`);
+  if(emptyFeature.test(String(p.name||'').trim()))add(p.id,`${p.id}: "${p.name}" describes empty space but parts[] creates positive material. Model a subtractive pocket or hole on its parent part, remove the standalone cutter part and update assembly references before freezing. A label or moving this block cannot create an opening.`);
   const holes=p.holes||[];
   for(let j=0;j<holes.length;j++) {
    const h=holes[j],axis=['x','y','z'].indexOf(h.axis);
@@ -18,7 +19,7 @@ export function geometryIntentIssues(spec) {
     const span=hole=>hole.depth===undefined?[-Infinity,Infinity]:[hole.position[axis]-hole.depth/2,hole.position[axis]+hole.depth/2];
     const [lo,hi]=span(h),[priorLo,priorHi]=span(prior);
     if(radial+h.diameter/2<=prior.diameter/2+1e-8 && lo>=priorLo-1e-8 && hi<=priorHi+1e-8) {
-     issues.push(`${p.id}: hole ${j} is contained in previous hole ${i} both radially and axially and cannot remove material. Without depth a hole traverses the whole part regardless of axial position. For a stepped seat declare a larger finite-depth bore centered at its local position and a smaller through bore, retaining an actual shoulder.`);
+     add(p.id,`${p.id}: hole ${j} is contained in previous hole ${i} both radially and axially and cannot remove material. Without depth a hole traverses the whole part regardless of axial position. For a stepped seat declare a larger finite-depth bore centered at its local position and a smaller through bore, retaining an actual shoulder.`);
      break;
     }
    }
@@ -26,6 +27,7 @@ export function geometryIntentIssues(spec) {
  }
  return issues.slice(0,12);
 }
+export function geometryIntentIssues(spec){return geometryIntentDiagnostics(spec).map(d=>d.message);}
 
 /** Keep the worker's actual rejection ahead of progress-only stderr. */
 export function nativeBuildFailureMessage(run,failedCad) {

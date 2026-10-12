@@ -1,8 +1,8 @@
 import {readFile,mkdir,writeFile,rename} from 'node:fs/promises';import path from 'node:path';import {randomUUID} from 'node:crypto';
-import {createGenerationCheckpointStore,generationIdentity,hashGenerationValue} from './studio-generation-checkpoints.mjs';
+import {createGenerationCheckpointStore,generationIdentity,hashGenerationValue,canResumeGeneration} from './studio-generation-checkpoints.mjs';
 import {runStagedGeneration} from './studio-staged-generation.mjs';
 import {loadStudioSkills,buildDesignMessages} from './studio-skills.mjs';
-import {DESIGN_JSON_SCHEMA} from './studio-schema.mjs';
+import {DESIGN_JSON_SCHEMA,ollamaProjection} from './studio-schema.mjs';
 import {searchCandidateContext,candidateSearchQuery} from './studio-candidate-context.mjs';
 import {createLibraryContext} from './studio-model-library.mjs';
 import {catalogContext} from './studio-catalog.mjs';import {electricalPromptContext} from './studio-electrical.mjs';
@@ -33,7 +33,7 @@ export function createStagedService({root,getSettings,getModels,localCatalog,inf
     }
     const identity=generationIdentity({projectId:project.id,inputRevision:project.revision,request:project.request,answers:project.answers,budget:project.budget,mode:input.mode||'auto',parentDesignHash:null,model:{name:settings.model,digest:installed.digest,settings:{temperature:.2,think:false,num_ctx:65536}},skillHash:hashGenerationValue(skills.hashes),schemaHash:hashGenerationValue({schema:DESIGN_JSON_SCHEMA,validatorHash}),sourceHash,contextHash:hashGenerationValue(contextSnapshot)});
     let h;
-    if(input.resumeGenerationId){h=await store.load({projectId:project.id,generationId:input.resumeGenerationId,identity});if(['accepted','questions','exhausted'].includes(h.snapshot().status))throw conflict('This generation cannot resume; start over explicitly.');if(Object.values(h.remaining()).some(v=>v<=0))throw conflict('Generation budget exhausted.');}
+    if(input.resumeGenerationId){h=await store.load({projectId:project.id,generationId:input.resumeGenerationId,identity});if(!canResumeGeneration(h.snapshot()))throw conflict('This generation cannot resume within its remaining allowances; start over explicitly.');}
     else if(create)h=await store.create({projectId:project.id,identity,contextSnapshot});
     return {canCancel:true,canResume:false,generationId:h?.id,identity,contextSnapshot,catalog,settings,installed};
   }
@@ -44,7 +44,7 @@ export function createStagedService({root,getSettings,getModels,localCatalog,inf
       const prepared=await prepare(project,{...input,mode:project.workflow.mode,resumeGenerationId:project.workflow.generationId},{create:false});
       const {identity,contextSnapshot,catalog,settings,installed}=prepared;
       const result=await runStagedGeneration({identity,contextSnapshot,store,resumeGenerationId:prepared.generationId,signal,onProgress,buildMessages:({contextSnapshot})=>contextSnapshot.messages,
-        infer:async({schema,messages,config,signal})=>{const answer=await infer(settings.endpoint,'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:settings.model,stream:false,think:false,format:schema,messages,options:{temperature:.2,num_ctx:config.numCtx,num_predict:config.numPredict}})},config.timeoutMs,signal);return {content:String(answer.message?.content||''),doneReason:answer.done_reason,metrics:{evalCount:answer.eval_count??null,promptEvalCount:answer.prompt_eval_count??null}};},
+        infer:async({schema,messages,config,signal})=>{const answer=await infer(settings.endpoint,'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:settings.model,stream:false,think:false,format:ollamaProjection(schema),messages,options:{temperature:.2,num_ctx:config.numCtx,num_predict:config.numPredict}})},config.timeoutMs,signal,undefined,settings.provider,{retryInfrastructure:false});return {content:String(answer.message?.content||''),doneReason:answer.done_reason,metrics:{evalCount:answer.eval_count??null,promptEvalCount:answer.prompt_eval_count??null}};},
         admit:(raw,{plan})=>admitGeneratedDesign(raw,{request:project.request,catalog,plan,requirePartExplanations:['design','deliver'].includes(project.workflow.mode)}),
       });
       signal?.throwIfAborted();const spec=result.spec,hash=designHash(spec),runId=randomUUID();

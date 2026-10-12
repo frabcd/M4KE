@@ -2,12 +2,12 @@ import {createHash,randomUUID} from 'node:crypto';
 import {lstat,mkdir,open,rename,unlink} from 'node:fs/promises';
 import {constants} from 'node:fs';import path from 'node:path';import {isDeepStrictEqual as equal} from 'node:util';
 import {parseGenerationJson} from './studio-generation-json.mjs';
-import {validateReadiness,validateGenerationPlan,partitionGeneration,validateGenerationUnit} from './studio-generation-stages.mjs';
+import {validateReadiness,validateGenerationPlan,partitionGeneration,validateGenerationUnit,dependentUnitKeys} from './studio-generation-stages.mjs';
 
 export const GENERATION_LIMITS=Object.freeze({requests:64,requestedOutputTokens:60000,activeMs:2400000,recordBytes:4194304,unitBytes:262144,units:128,totalBytes:33554432});
-const PROTOCOL=1,UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const PROTOCOL=2,UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const clone=x=>structuredClone(x);
-function fail(message){throw Object.assign(new Error(message),{code:'CHECKPOINT_CONFLICT',statusCode:409});}
+function fail(message){throw Object.assign(new Error(message),{code:'CHECKPOINT_CONFLICT',status:409});}
 function canonical(v){if(Array.isArray(v))return '['+v.map(canonical).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}';return JSON.stringify(v);}
 export const hashGenerationValue=v=>createHash('sha256').update(canonical(v)).digest('hex');
 export function generationIdentity(input){
@@ -38,6 +38,22 @@ async function writeJson(file,value){
 const allowedStatuses=['running','stopped','questions','accepted','exhausted'];
 function remaining(s){return {requests:64-s.reservations.length,requestedOutputTokens:60000-s.reservations.reduce((n,r)=>n+r.tokenLimit,0),activeMs:2400000-s.reservations.reduce((n,r)=>n+(r.elapsedMs??r.timeoutMs),0)};}
 function requestLimit(key){return key==='readiness'?[1500,180000]:key==='plan'?[4000,300000]:[3000,240000];}
+/** Eligibility mirrors the next dispatch, including orphaned reservations after restart. */
+export function canResumeGeneration(s){
+  if(['accepted','questions','exhausted'].includes(s.status))return false;
+  const unfinished=[];
+  if(!s.readiness)unfinished.push('readiness');
+  else if(!s.plan)unfinished.push('plan');
+  else for(const u of partitionGeneration(s.plan)){
+    if(s.units.some(r=>r.key===u.key))continue;
+    if(s.splits.includes(s.repairRounds+':'+u.key))for(let i=0;i<u.ids.length;i++){
+      const key=u.key+'~'+i;if(!s.units.some(r=>r.key===key))unfinished.push(key);
+    }else unfinished.push(u.key);
+  }
+  if(unfinished.some(key=>s.reservations.filter(r=>r.unitKey===key&&r.round===s.repairRounds).length>=(key.includes('~')?1:2)))return false;
+  if(!unfinished.length)return true; // All bytes exist; global validation needs no inference.
+  const left=remaining(s);return left.requests>=1&&left.requestedOutputTokens>=requestLimit(unfinished[0])[0]&&left.activeMs>=1;
+}
 function validateBudget(s){
   if(![0,1].includes(s.repairRounds)||!Array.isArray(s.splits)||s.splits.length>64)fail('corrupt retry ledger');
   const ids=new Set(),counts=new Map();
@@ -54,7 +70,7 @@ function validateBudget(s){
   for(const v of Object.values(remaining(s)))if(!Number.isFinite(v)||v<0)fail('generation budget exhausted');
 }
 function validateState(s,projectId,id,identity,context){
-  exactKeys(s,['protocol','projectId','id','identity','status','readiness','plan','planHash','units','invalidations','reservations','splits','repairRounds','createdAt','updatedAt']);
+  exactKeys(s,['protocol','projectId','id','identity','status','readiness','plan','planHash','units','invalidations','reservations','splits','repairRounds','repairContext','createdAt','updatedAt']);
   if(s.protocol!==PROTOCOL||s.projectId!==projectId||s.id!==id||!allowedStatuses.includes(s.status)||generationIdentity(s.identity.identity).hash!==identity.hash||s.identity.hash!==identity.hash)fail('stale checkpoint identity');
   if(hashGenerationValue(context)!==identity.identity.contextHash)fail('changed context snapshot');
   if(!Array.isArray(s.units)||s.units.length>128||!Array.isArray(s.reservations)||s.reservations.length>64||!Array.isArray(s.invalidations)||s.invalidations.length>128)fail('checkpoint count bounds');
@@ -62,6 +78,11 @@ function validateState(s,projectId,id,identity,context){
   if(s.plan){validateGenerationPlan(s.plan,{readiness:s.readiness,sources:context.sources});if(s.planHash!==hashGenerationValue(s.plan))fail('corrupt plan');}
   else if(s.units.length)fail('units without plan');
   validateBudget(s);
+  if(!s.repairContext||typeof s.repairContext!=='object'||Array.isArray(s.repairContext)||Object.keys(s.repairContext).length>128)fail('invalid repair context');
+  for(const [key,r] of Object.entries(s.repairContext)){
+    descriptorFor(s.plan,key);exactKeys(r,['reason','previousPayload','previousPayloadHash']);
+    if(s.repairRounds!==1||typeof r.reason!=='string'||r.reason.length>2000||hashGenerationValue(r.previousPayload)!==r.previousPayloadHash||Buffer.byteLength(JSON.stringify(r.previousPayload))>GENERATION_LIMITS.unitBytes)fail('corrupt repair context');
+  }
   const seen=new Set(),checked=[];
   for(const r of s.units){
     exactKeys(r,['key','descriptor','payload','payloadHash','dependencyHashes','planHash','status']);
@@ -112,7 +133,15 @@ export function createGenerationCheckpointStore({root,now=()=>Date.now()}={}){
         const descriptor=descriptorFor(s.plan,key),attempts=s.reservations.filter(r=>r.unitKey===key&&r.round===s.repairRounds),split=s.repairRounds+':'+key;
         if(descriptor.ids.length<2||attempts.length!==1||attempts[0].outcome!=='length'||s.splits.includes(split))fail('split retry exhausted');s.splits.push(split);
       }),
-      beginRepair:()=>transition(s=>{if(s.repairRounds!==0)fail('final repair exhausted');s.repairRounds=1;}),
+      beginRepair:({keys,reason})=>transition(s=>{
+        if(s.repairRounds!==0)fail('final repair exhausted');
+        if(!Array.isArray(keys)||typeof reason!=='string'||reason.length>2000)fail('invalid repair');
+        for(const key of keys)descriptorFor(s.plan,key);
+        const affected=dependentUnitKeys(partitionGeneration(s.plan),keys),removed=s.units.filter(r=>affected.has(r.key)||affected.has(r.descriptor.parentKey));
+        for(const r of removed)s.repairContext[r.key]={reason,previousPayload:r.payload,previousPayloadHash:r.payloadHash};
+        s.invalidations.push({keys:removed.map(r=>r.key),hashes:removed.map(r=>r.payloadHash),reason});
+        s.units=s.units.filter(r=>!removed.includes(r));s.repairRounds=1;
+      }),
       saveReadiness:r=>transition(s=>{const clean=validateReadiness(r);if(s.readiness&&!equal(s.readiness,clean))fail('immutable readiness');s.readiness=clean;}),
       savePlan:p=>transition(s=>{const clean=validateGenerationPlan(p,{readiness:s.readiness,sources:context.sources});if(s.plan&&!equal(clean,s.plan))fail('immutable plan');s.plan=clean;s.planHash=hashGenerationValue(clean);}),
       saveUnit:record=>transition(s=>{exactKeys(record,['descriptor','payload','dependencyHashes']);const d=record.descriptor,clean=validateGenerationUnit(s.plan,d,record.payload,s.units);if(!equal(record.dependencyHashes,dependencyHashes(s,d)))fail('stale dependency');if(s.units.some(r=>r.key===d.key))fail('unit already exists; invalidate explicitly');s.units.push({key:d.key,descriptor:d,payload:clean,payloadHash:hashGenerationValue(clean),dependencyHashes:record.dependencyHashes,planHash:s.planHash,status:'UNIT_VALIDATED'});}),
@@ -128,7 +157,7 @@ export function createGenerationCheckpointStore({root,now=()=>Date.now()}={}){
     async create({projectId,identity,contextSnapshot}){
       if(identity.hash!==generationIdentity(identity.identity).hash||projectId!==identity.identity.projectId)fail('invalid identity');
       const id=randomUUID(),dir=directory(projectId,id);await safePath(dir,{create:true});
-      const state={protocol:PROTOCOL,projectId,id,identity:clone(identity),status:'running',readiness:null,plan:null,planHash:null,units:[],invalidations:[],reservations:[],splits:[],repairRounds:0,createdAt:now(),updatedAt:now()};
+      const state={protocol:PROTOCOL,projectId,id,identity:clone(identity),status:'running',readiness:null,plan:null,planHash:null,units:[],invalidations:[],reservations:[],splits:[],repairRounds:0,repairContext:{},createdAt:now(),updatedAt:now()};
       validateState(state,projectId,id,identity,contextSnapshot);await writeJson(path.join(dir,'context.json'),contextSnapshot);await writeJson(path.join(dir,'state.json'),state);
       const h=handle(dir,state,contextSnapshot);handles.set(dir,h);return h;
     },

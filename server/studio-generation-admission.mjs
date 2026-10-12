@@ -1,6 +1,6 @@
 import {validateDesignSpec,designHash,PHYSICS_RANGES} from './studio-contract.mjs';
 import {engineeringChecks} from '../engineering/physics.mjs';
-import {geometryIntentIssues} from './studio-generation-diagnostics.mjs';
+import {geometryIntentDiagnostics} from './studio-generation-diagnostics.mjs';
 import {electricalDraftIssues} from './studio-electrical.mjs';
 import {generationCatalogIssues} from './studio-catalog.mjs';
 import {requestConstraintIssues} from './studio-request-constraints.mjs';
@@ -8,10 +8,10 @@ import {validateRepair,validateUserRefinement} from './studio-repair.mjs';
 import {partitionGeneration} from './studio-generation-stages.mjs';
 import {isDeepStrictEqual as equal} from 'node:util';
 export function inspectInitialDraft(draft,catalog) {
-  const issues=[];let candidate=null;
+  const issues=[];let candidate=null;let geometryDiagnostics=[];
   if(Array.isArray(draft?.parts)&&draft.parts.length>24)issues.push('General Qwen designs are limited to 24 parts; larger source kits require their explicit route.');
   try{candidate=validateDesignSpec(draft);}catch(error){issues.push(error.message);}
-  if(candidate)issues.push(...geometryIntentIssues(candidate));
+  if(candidate){geometryDiagnostics=geometryIntentDiagnostics(candidate);issues.push(...geometryDiagnostics.map(d=>d.message));}
   try{issues.push(...electricalDraftIssues(draft));}catch{/* Structural validation above owns malformed data. */}
   if(Array.isArray(draft?.parts)&&draft.parts.length<=48&&draft.parts.every(p=>p&&typeof p==='object')) {
     try{issues.push(...generationCatalogIssues(candidate||draft,catalog));}catch{/* Malformed fields remain rejected, never silently accepted. */}
@@ -29,7 +29,7 @@ export function inspectInitialDraft(draft,catalog) {
   }
   if(draft?.parts?.length&&!draft.questions?.length)for(const check of engineeringChecks(inputs))if(check.status==='FAIL')
     issues.push(`${check.id}: declared-input screening FAIL; observed ${JSON.stringify(check.observed)}; required ${check.required}. Correct the unaccepted architecture, preserve user targets and source facts; this is not physical evidence.`.slice(0,1000));
-  return {candidate,issues:[...new Set(issues)].slice(0,12)};
+  return {candidate,issues:[...new Set(issues)].slice(0,12),geometryDiagnostics};
 }
 
 export function architectureBindingIssues(spec,plan){
@@ -49,7 +49,12 @@ export function admitGeneratedDesign(raw,{request,catalog,plan=null,requirePartE
     if(inspected.issues.length){
       // Retain a structured validator path only when it really caused failure.
       if(!inspected.candidate)validateDesignSpec(raw);
-      throw new Error(inspected.issues.join('; ').slice(0,3900));
+      const units=plan?partitionGeneration(plan):[];
+      return {spec:null,issues:inspected.issues.map(message=>{
+        const diagnostic=inspected.geometryDiagnostics.find(d=>d.message===message);
+        const owner=diagnostic&&units.find(u=>u.kind==='part'&&u.ids.includes(diagnostic.partId));
+        return {code:diagnostic?.code||'GLOBAL_ADMISSION',message,unitKeys:owner?[owner.key]:[],attribution:owner?'exact':'unknown'};
+      })};
     }
     const candidate=inspected.candidate;
     if(requirePartExplanations&&candidate.parts.some(p=>!p.explanation))throw new Error('Every new part needs explanation:{purpose,placementReason,selectionReason}; this is design intent, not evidence.');

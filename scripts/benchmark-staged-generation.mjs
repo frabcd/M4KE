@@ -61,11 +61,18 @@ export async function runBenchmark({endpoint,model,dataRoot,brief,out,timeoutMs,
     await persist();return receipt;
   } catch(error) {
     // Stop only the workflow this collector created, using a fresh revision.
+    let stopConfirmed=false;
     if(project?.id) {
-      try {const latest=await api(`/api/studio/projects/${project.id}`);if(latest.workflow?.id===project.workflow?.id&&latest.workflow?.status==='running'&&latest.workflow.canCancel)project=await api(`/api/studio/projects/${project.id}/cancel`,{expectedRevision:latest.revision,workflowId:latest.workflow.id});} catch { /* Evidence below retains uncertainty. */ }
+      const ownedWorkflowId=project.workflow?.id;
+      try {
+        const latest=await api(`/api/studio/projects/${project.id}`);project=latest;
+        if(ownedWorkflowId&&latest.workflow?.id===ownedWorkflowId&&latest.workflow.status==='running'&&latest.workflow.canCancel)
+          project=await api(`/api/studio/projects/${project.id}/cancel`,{expectedRevision:latest.revision,workflowId:ownedWorkflowId});
+        stopConfirmed=Boolean(ownedWorkflowId&&project.workflow?.id===ownedWorkflowId&&['draft','questions','error','complete'].includes(project.workflow.status));
+      } catch { /* No positive terminal observation: stopping remains unconfirmed. */ }
       await persist();
     }
-    await writeFile(path.join(output,'error.json'),JSON.stringify({message:error.message,ownedProjectId:project?.id??null,stopConfirmed:project?.workflow?.status!=='running'},null,2));
+    await writeFile(path.join(output,'error.json'),JSON.stringify({message:error.message,ownedProjectId:project?.id??null,stopConfirmed},null,2));
     throw error;
   }
 }

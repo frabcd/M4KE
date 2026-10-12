@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {benchmarkReceipt,compareBenchmarks,runBenchmark} from '../scripts/benchmark-staged-generation.mjs';
-import {mkdtemp,mkdir,writeFile} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';import path from 'node:path';import {randomUUID} from 'node:crypto';
 import {createGenerationCheckpointStore,generationIdentity,hashGenerationValue} from '../server/studio-generation-checkpoints.mjs';
 
@@ -26,6 +26,20 @@ test('benchmark refuses execution without explicit coordination and bounded conf
   await assert.rejects(()=>runBenchmark({endpoint:'http://127.0.0.1:4173',fetchJson}),/coordination/);
   await assert.rejects(()=>runBenchmark({coordinated:true,endpoint:'http://127.0.0.1:4173',fetchJson}),/explicit/);
   assert.equal(calls,0);
+});
+test('lost run response cannot claim stop or cancel an unidentified workflow',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'m4ke-lost-run-')),id=randomUUID(),project={id,request:'fixture',answers:[],budget:'',revision:1};let cancels=0;
+ const out=path.join(root,'result'),running={...project,workflow:{id:randomUUID(),status:'running',canCancel:true}};
+ await assert.rejects(()=>runBenchmark({coordinated:true,endpoint:'http://127.0.0.1:4173',model:'fixture',dataRoot:root,out,brief:project,timeoutMs:1000,fetchJson:async(url,opts)=>{
+  if(url.endsWith('/settings'))return {model:'fixture',provider:'ollama'};
+  if(url.endsWith('/capabilities'))return {workflow:{stagedGeneration:true}};
+  if(url.endsWith('/projects')&&opts.method==='POST'){await mkdir(path.join(root,'data/studio-projects'),{recursive:true});await writeFile(path.join(root,'data/studio-projects',id+'.json'),JSON.stringify(project));return project;}
+  if(url.endsWith('/projects'))return {projects:[]};
+  if(url.endsWith('/run'))throw Error('lost response');
+  if(url.endsWith('/cancel')){cancels++;return {...running,workflow:{...running.workflow,status:'error'}};}
+  return running;
+ }}),/lost response/);
+ const error=JSON.parse(await readFile(path.join(out,'error.json'),'utf8'));assert.equal(error.stopConfirmed,false);assert.equal(cancels,0);assert.equal(JSON.parse(await readFile(path.join(out,'receipt.json'),'utf8')).status,'running');
 });
 test('collector reads real checkpoint state and refuses a legacy endpoint before run',async()=>{
   const root=await mkdtemp(path.join(tmpdir(),'staged-bench-'));const projectId=randomUUID(),context={sources:{catalogIds:[],libraryHashes:[]}};
