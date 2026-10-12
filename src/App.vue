@@ -327,8 +327,8 @@ async function create() {
         <p>
           {{
             s.t(
-              "行为、用途和限制比工程术语更重要。AI 只追问必要信息，其余提出明确假设。",
-              "Describe behavior, purpose and constraints. AI asks only essential questions and states the remaining assumptions.",
+              "描述用途、外形、尺寸、预算和必须满足的限制。",
+              "Describe the purpose, shape, dimensions, budget and constraints.",
             )
           }}
         </p>
@@ -367,8 +367,8 @@ async function create() {
           <div>
             <span class="hint">{{
               s.t(
-                "不默认币种、不自动购买",
-                "No default currency · No automatic purchases",
+                "请注明币种",
+                "Include the currency",
               )
             }}</span
             ><button :disabled="s.working || !s.dirty" @click="s.save">
@@ -432,14 +432,14 @@ async function create() {
               ? s.t("正在设计与检查…", "Designing & checking…")
               : s.hasQuestions
                 ? s.t("提交答案，继续设计", "Submit answers & design")
-                : s.t("开始创作", "Create my design")
+                : s.t("生成设计预览", "Generate a design preview")
           }}<ArrowRight :size="17" />
         </button>
         <p class="hint">
           {{
             s.t(
-              "先生成、检查并尝试修复，再展示可审阅的版本。不会自动打印；实物校准与测试单独确认。",
-              "Design, check and attempt repair before presenting a reviewable version. No automatic printing; physical calibration and testing remain separate.",
+              "先查看零件、尺寸和待确认项。确认设计后，再运行 CAD 与可行性检查。",
+              "Review the parts, dimensions and open questions first. Then run CAD and feasibility checks.",
             )
           }}
         </p>

@@ -1140,6 +1140,23 @@ try {
     await page.getByRole('button',{name:'切换为英文',exact:true}).click();
     assert.match(await page.getByTestId('truncation-failure').innerText(),/Automatic retries have stopped/);
   });
+  await check("downstream stages hide stale inference progress in both languages", async () => {
+    pending='';
+    view={...view,language:'en'};
+    project={...project,spec:null,jobId:null,designHash:null,workflow:{status:'running',stage:'cad',inference:{phase:'validating',attempt:2,retryReason:'output-truncated',tokenLimit:20000,outputCharacters:4321}}};
+    for(const [stage,en,zh] of [['cad','Building CAD','正在生成 CAD'],['pricing','Looking up supplier prices','正在查询供应商价格'],['repair','Correcting design issues','正在修正设计问题'],['calculations','Calculating dimensions and loads','正在计算尺寸与载荷'],['verify','Checking geometry and electrical constraints','正在核对几何与电气']]){
+      project.workflow={...project.workflow,stage};
+      await page.reload();await page.getByTestId('generation-activity').waitFor();
+      assert.match(await page.locator('.activity-title').innerText(),new RegExp(en));
+      assert.equal(await page.getByTestId('truncation-status').count(),0);
+      assert(!/tokens|characters received|Generation attempt/.test(await page.getByTestId('generation-activity').innerText()));
+      await page.getByRole('button',{name:'Switch to Chinese',exact:true}).click();
+      assert.match(await page.locator('.activity-title').innerText(),new RegExp(zh));
+      assert(!/tokens|字符已收到|生成尝试/.test(await page.getByTestId('generation-activity').innerText()));
+      const savedEn=page.waitForResponse(response=>response.url().endsWith(`/projects/${projectId}/view`)&&response.request().method()==='PUT'&&response.request().postDataJSON()?.language==='en');
+      await page.getByRole('button',{name:'切换为英文',exact:true}).click();await savedEn;
+    }
+  });
   await check("no browser exceptions or hardware actions", async () => {
     assert.deepEqual(errors, []);
     assert.equal(

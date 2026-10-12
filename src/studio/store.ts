@@ -142,12 +142,13 @@ export const useStudio = defineStore("studio", () => {
     if (w.status === "complete") return t("本轮数字检查已完成", "Digital checks completed");
     if (w.status === "questions") return t("需要你确认几个关键点", "A few decisions need your input");
     const labels: Record<string, [string, string]> = {
-      design: ["正在理解要求并设计", "Understanding your brief and designing"],
-      calculations: ["正在计算尺寸与性能", "Calculating dimensions and performance"],
-      cad: ["正在生成并检查原生 CAD", "Building and checking native CAD"],
+      design: ["正在生成设计", "Generating the design"],
+      calculations: ["正在计算尺寸与载荷", "Calculating dimensions and loads"],
+      cad: ["正在生成 CAD", "Building CAD"],
       verify: ["正在核对几何与电气", "Checking geometry and electrical constraints"],
-      repair: ["正在根据检查结果修复方案", "Repairing issues found by the checks"],
-      planning_checks: ["正在安排验证步骤", "Planning verification steps"],
+      repair: ["正在修正设计问题", "Correcting design issues"],
+      planning_checks: ["正在选择检查项目", "Choosing checks"],
+      pricing: ["正在查询供应商价格", "Looking up supplier prices"],
       infrastructure_retry: ["连接恢复中，保留原设计重试", "Retrying the same design after an execution interruption"],
     };
     const pair = labels[w.stage]; return pair ? t(...pair) : t("正在处理当前方案", "Working on this design");
