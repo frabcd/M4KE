@@ -24,6 +24,7 @@ test('intake scope is a system instruction and never freezes model-selected hard
 test('updated upstream form instructions survive the consuming stage routes',async()=>{
  const c=await fixture(),section=c.stageSkills.design.split(/(?=^#{1,2} )/m).find(s=>s.startsWith('## Form and finish'));
  assert.ok(section);
+ assert.ok(!build({unit:{kind:'readiness'},contextSnapshot:c,state:{}})[0].content.includes(section),'Intake must not be told to choose a product form');
  for(const kind of ['plan','part','metadata','assembly'])assert.ok(build({unit:{kind},contextSnapshot:c,state:{plan:{parts:[]}}})[0].content.includes(section),kind);
 });
 

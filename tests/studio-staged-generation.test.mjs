@@ -32,6 +32,18 @@ test('essential questions stop before plan, geometry or admission',async()=>{
  const c=await setup();let admitted=false;c.infer=async({unit})=>{c.calls.push(unit.key);return response({...readiness(),status:'questions',questions:[{id:'battery',question:'Which battery?'}]});};c.admit=()=>{admitted=true;throw Error('must not admit');};
  const result=await runStagedGeneration(c);assert.equal(result.status,'questions');assert.deepEqual(c.calls,['readiness']);assert.equal(admitted,false);assert.deepEqual(result.spec.parts,[]);
 });
+
+test('planning disclosures survive durable stages and final assembly without deleting intake unknowns',async()=>{
+ const c=await setup(1),base=c.infer;
+ const r={...readiness(),assumptions:['Benchmark only'],unknowns:['Physical fit untested']};
+ c.p.assumptions=[...r.assumptions,'MODEL_ASSUMED material'];
+ c.p.unknowns=[...r.unknowns,'Source interface measurement missing'];
+ c.infer=async args=>args.unit.kind==='readiness'?response(r):base(args);
+ const result=await runStagedGeneration(c);assert.equal(result.status,'accepted');
+ assert.deepEqual(result.spec.assumptions,c.p.assumptions);assert.deepEqual(result.spec.unknowns,c.p.unknowns);
+ const saved=await c.store.inspect({projectId:c.identity.identity.projectId,generationId:result.generationId});
+ assert.deepEqual(saved.state.readiness,r);assert.deepEqual(saved.state.plan.unknowns,c.p.unknowns);
+});
 test('truncated second batch splits once without regenerating first batch',async()=>{
  const c=await setup(),base=c.infer;c.infer=async args=>{if(args.unit.key==='part-1'){c.calls.push('part-1');return {content:'{"items":[',doneReason:'length'};}return base(args);};
  const result=await runStagedGeneration(c);assert.equal(result.status,'accepted');assert.equal(c.calls.filter(k=>k==='part-0').length,1);assert.ok(c.calls.includes('part-1~0'));assert.ok(c.calls.includes('part-1~1'));assert.equal(result.spec.parts.length,5);

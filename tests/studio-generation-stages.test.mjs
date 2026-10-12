@@ -14,6 +14,22 @@ test('plan enforces immutable metadata, references and global limits',()=>{
   }
   assert.throws(()=>validateGenerationPlan(plan(25),{readiness:readiness()}));
 });
+test('planning can disclose new assumptions and unknowns without erasing intake evidence',()=>{
+  const ready={...readiness(),assumptions:['User delegated reversible material choice'],unknowns:['Physical fit has not been tested']};
+  const p={...plan(),assumptions:[...ready.assumptions,'MODEL_ASSUMED prototype material'],unknowns:[...ready.unknowns,'Newly discovered interface measurement missing']};
+  assert.deepEqual(validateGenerationPlan(p,{readiness:ready}),p);
+  for(const key of ['assumptions','unknowns']){
+    const dropped=structuredClone(p);dropped[key].shift();
+    assert.throws(()=>validateGenerationPlan(dropped,{readiness:ready}),/readiness/);
+    const rewritten=structuredClone(p);rewritten[key][0]='Now verified';
+    assert.throws(()=>validateGenerationPlan(rewritten,{readiness:ready}),/readiness/);
+    const reordered=structuredClone(p);reordered[key].reverse();
+    assert.throws(()=>validateGenerationPlan(reordered,{readiness:ready}),/readiness/);
+  }
+  const changed=structuredClone(p);changed.requirements[0].text='Another user goal';
+  assert.throws(()=>validateGenerationPlan(changed,{readiness:ready}),/readiness requirements/);
+});
+
 test('partition limits and dependency invalidation preserve independent parts',()=>{
   const p=plan(7);p.electrical={components:p.parts.slice(0,5).map(p=>({partId:p.id,profileId:'unknown'})),connections:Array.from({length:13},(_,i)=>({id:'w'+i,from:{partId:'p0',terminal:'t'+i},to:{partId:'p1',terminal:'t'+i},kind:'signal'})),control:false};
   const units=partitionGeneration(validateGenerationPlan(p,{readiness:readiness()}));

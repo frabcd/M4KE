@@ -53,7 +53,10 @@ export function validateReadiness(raw){
 }
 export function validateGenerationPlan(raw,{readiness,sources={catalogIds:[],libraryHashes:[]}}={}){
   const p=safe(raw,PLAN_SCHEMA);
-  for(const k of ['requirements','assumptions','unknowns'])if(!equal(p[k],readiness?.[k]))fail('immutable readiness '+k);
+  if(!equal(p.requirements,readiness?.requirements))fail('immutable readiness requirements');
+  // Planning sees detailed sources for the first time. New disclosures are
+  // permitted, but intake assumptions/unknowns cannot be erased or rewritten.
+  for(const k of ['assumptions','unknowns'])if(!Array.isArray(readiness?.[k])||!equal(p[k].slice(0,readiness[k].length),readiness[k]))fail('preserve readiness '+k);
   const ids=new Set(p.parts.map(x=>x.id)),steps=new Set(p.assembly.map(x=>x.id));
   unique(p.parts.map(x=>x.id));unique(p.assembly.map(x=>x.id));
   for(const part of p.parts){

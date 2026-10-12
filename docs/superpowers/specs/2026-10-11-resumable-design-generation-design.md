@@ -40,6 +40,8 @@ Questions produce the existing `pendingQuestions` UI and stop immediately; there
 
 The model returns a compact plan with stable part IDs, kinds, source identities, global poses and interface/layout intent, plus the IDs of required assembly steps, electrical components/connections, build items and verification requests. It declares which optional sections apply, explicitly representing absent sections. Requirements and user-supplied constraints remain bound to the request.
 
+Planning sees source details that intake does not. It must preserve intake requirements exactly and retain the complete intake assumptions and unknowns as unchanged ordered prefixes. It may append new assumptions and unknowns within the existing schema limits. Appending a note does not resolve an earlier unknown or establish evidence. After plan validation, these full arrays remain frozen through unit generation and assembly. Form-selection instructions belong to planning and geometry stages, not intake.
+
 The plan must fit within existing global cardinalities: at most 24 parts, 48 assembly steps, 32 electrical components, 96 connections, 40 build items and 12 verification requests. No new host-selected part or topology is introduced. Resolve admitted catalog/library identities against the same source context used for the plan; appearance alone never qualifies a component.
 
 Structural checks enforce unique IDs, valid references and declared section coverage. A plan is still unaccepted model intent. Once validated, its hash becomes a dependency of every generated unit. Automatic unit repair cannot add/delete roster IDs, change source identities or rewrite the requirements. A necessary plan change stops for explicit upstream revision; it is not concealed inside a geometry retry.

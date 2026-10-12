@@ -581,8 +581,8 @@
       "bytes": 1956
     },
     "server/studio-generation-stages.mjs": {
-      "sha256": "2481b6ba2a1363aba15f61257c88dc352a113f17efb08c37a200b2d3868f0e85",
-      "bytes": 11100
+      "sha256": "7cce964a655a6d8a364631bd3a266eb74ac2676c8727c4bd2acac17b7e61afb1",
+      "bytes": 11392
     },
     "server/studio-http.mjs": {
       "sha256": "906a3b463cf390a1f4165cb7d48aeb9108b6c9ba9559225510bb78710de171e6",
@@ -677,8 +677,8 @@
       "bytes": 8327
     },
     "server/studio-staged-service.mjs": {
-      "sha256": "6c666f5fcd36fde7c432761dca4f27f0438bda8a5ab8423a7b66922343138ea6",
-      "bytes": 13617
+      "sha256": "9805ada1f8d0f4606c8b1f5aebddb842b12f8b9b219fe45c91f576eefc8de6d5",
+      "bytes": 13883
     },
     "server/studio-usability.mjs": {
       "sha256": "26af567ba1c7098927aa3f942b4772dce2cf5d734bc842cbec040999026be16f",
@@ -1253,8 +1253,8 @@
       "bytes": 1149
     },
     "tests/studio-generation-stages.test.mjs": {
-      "sha256": "14ad3137e4ef9d5df8ea17faa49c8dc43ebd88bcc48a2b3280e65439770de0a6",
-      "bytes": 3817
+      "sha256": "9bf26fb1c1ba872e51fba18d5ce76b51ee662dbd5b79984494bcc00e64ab4a64",
+      "bytes": 4985
     },
     "tests/studio-generation-validation.test.mjs": {
       "sha256": "6908e1e6b7bf67f87adea14bed2102879586b52828e559a86c29980ec8bb8dac",
@@ -1333,12 +1333,12 @@
       "bytes": 53679
     },
     "tests/studio-staged-context.test.mjs": {
-      "sha256": "00c130dd47524c7ffd2af7a2aec298e9c5f3f5df23a4bcf06767f39662b97575",
-      "bytes": 6728
+      "sha256": "3edfeaaa43da9d54a0e2993ba8a370153dbb40925d5213cda84e98cc40c697d6",
+      "bytes": 6882
     },
     "tests/studio-staged-generation.test.mjs": {
-      "sha256": "ab6affe235af83abb1472f38ca01c3ea048cdd230140a6638c999e89dcff78a4",
-      "bytes": 8206
+      "sha256": "eb6cf38a60df14f0cabf624ebfd424561eaa4ae82200d8e22acd6813d8fdd03a",
+      "bytes": 9070
     },
     "tests/studio-staged-projects.test.mjs": {
       "sha256": "b9760cabf0b8f9a8da558d5cf911c81f9342da004824c2149fbcaf89554db52c",
@@ -1425,8 +1425,8 @@
       "bytes": 11712
     },
     "texting.txt": {
-      "sha256": "2c425c2dc065fbce0a2b898a12e53329a9ece4a0200bd3b28d0d426a57d199d5",
-      "bytes": 39190
+      "sha256": "56866168bdb52084b20e0455b2810b003e23867a7fa8e974c27b0c4145b18e77",
+      "bytes": 40716
     },
     "tsconfig.json": {
       "sha256": "5254b6412d77d8bcbcf50652402d4ee45a1379d3335cb3c155367e886961e51c",
