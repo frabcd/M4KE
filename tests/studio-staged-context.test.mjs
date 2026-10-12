@@ -1,7 +1,28 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import * as service from '../server/studio-staged-service.mjs';
 import {loadStudioSkills,buildDesignMessages} from '../server/studio-skills.mjs';
+import {PLAN_SCHEMA} from '../server/studio-generation-stages.mjs';
 const build=args=>(service.buildStagedMessages??(({contextSnapshot})=>contextSnapshot.messages))(args);
+
+test('plan output structure reaches the model and disclosed preferences stay delegated',async()=>{
+ const c=await fixture(),before=JSON.stringify(c),messages=build({unit:{kind:'plan'},contextSnapshot:c,state:{}}),data=JSON.parse(messages[1].content);
+ assert.deepEqual(data.stageOutputContract.requiredFields,PLAN_SCHEMA.required);
+ assert.deepEqual(data.stageOutputContract.partFields,PLAN_SCHEMA.properties.parts.items.required);
+ assert.deepEqual(data.stageOutputContract.assemblyFields,PLAN_SCHEMA.properties.assembly.items.required);
+ assert.match(messages[0].content,/retained preference\/physical unknowns are disclosures/);
+ assert.match(messages[0].content,/newly identified blocking conflict/);
+ assert.equal(JSON.stringify(c),before);
+});
+
+test('planning sees executable geometry and contact rules before freezing poses',async()=>{
+ const c=await fixture(),system=build({unit:{kind:'plan'},contextSnapshot:c,state:{}})[0].content;
+ for(const heading of ['Strict geometry grammar','Functional geometry self-check before responding']){
+  const section=c.stageSkills.design.split(/(?=^#{1,2} )/m).find(s=>s.startsWith('## '+heading));
+  assert.ok(section);assert.ok(system.includes(section),'Pose-freezing planning must receive '+heading+' verbatim');
+ }
+ assert.match(system,/unrotated cylinder's axis is Z/);
+ assert.match(system,/Distinct rigid parts must NOT intersect/);
+});
 async function fixture(){const skills=await loadStudioSkills();const data={request:'Build the requested object; no Raspberry Pi.',answers:{budget:'300 CNY'},localCatalog:{components:Array.from({length:24},(_,i)=>({id:'c'+i,name:'Component '+i,geometry:{type:'catalog',catalogId:'c'+i},sourceFacts:'A'.repeat(1000)}))},electricalProfiles:{profiles:Array.from({length:12},(_,i)=>({id:'profile'+i,terminals:[{id:'VCC',description:'B'.repeat(800)}]}))},nativeLibrary:null,candidateReferences:{text:'C'.repeat(6000)},sourcingContext:{entries:[]}};return {stageSkills:skills,messages:[{role:'system',content:buildDesignMessages({request:data.request,skills})[0].content},{role:'user',content:JSON.stringify(data)}]};}
 test('real-size catalog no longer blocks intake or plan before dispatch',async()=>{const c=await fixture();assert.ok(Buffer.byteLength(JSON.stringify(c.messages))>65536);for(const kind of ['readiness','plan']){const m=build({unit:{kind},contextSnapshot:c,state:{}});assert.ok(Buffer.byteLength(JSON.stringify(m))+4000+1024<65536,kind+' must fit with reserved output');assert.match(JSON.stringify(m),/300 CNY/);assert.match(JSON.stringify(m),/no Raspberry Pi/);}});
 test('selected records retain all source facts and snapshot stays immutable',async()=>{const c=await fixture(),before=JSON.stringify(c);const state={plan:{parts:[{identity:{type:'catalog',catalogId:'c3'}}],electrical:{components:[{profileId:'profile2'}]}}};const m=build({unit:{kind:'part'},contextSnapshot:c,state});const d=JSON.parse(m[1].content);assert.deepEqual(d.localCatalog.components,[JSON.parse(c.messages[1].content).localCatalog.components[3]]);assert.deepEqual(d.electricalProfiles.profiles,[JSON.parse(c.messages[1].content).electricalProfiles.profiles[2]]);assert.equal(JSON.stringify(c),before);assert.match(m[0].content,/Strict geometry grammar/);});
