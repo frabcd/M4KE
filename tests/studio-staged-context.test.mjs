@@ -20,6 +20,10 @@ test('plan output structure reaches the model and disclosed preferences stay del
  assert.deepEqual(data.stageOutputContract.requiredFields,PLAN_SCHEMA.required);
  assert.deepEqual(data.stageOutputContract.partFields,PLAN_SCHEMA.properties.parts.items.required);
  assert.deepEqual(data.stageOutputContract.assemblyFields,PLAN_SCHEMA.properties.assembly.items.required);
+ assert.match(data.stageOutputContract.assemblyDependencies,/prerequisite assembly-step IDs/);
+ assert.match(data.stageOutputContract.assemblyDependencies,/Independent first steps use \[\]/);
+ assert.match(data.stageOutputContract.identity,/Never substitute an unrelated/);
+ assert.match(data.stageOutputContract.poses,/not all-zero placeholders/);
  assert.match(messages[0].content,/retained preference\/physical unknowns are disclosures/);
  assert.match(messages[0].content,/newly identified blocking conflict/);
  assert.equal(JSON.stringify(c),before);

@@ -1,6 +1,7 @@
 import {isDeepStrictEqual as equal} from 'node:util';
 import {DESIGN_JSON_SCHEMA} from './studio-schema.mjs';
 import {ELECTRICAL_JSON_SCHEMA} from './studio-electrical.mjs';
+import {profileById} from './studio-electrical-profiles.mjs';
 import {validateGenerationItem} from './studio-contract.mjs';
 import {parseGenerationJson} from './studio-generation-json.mjs';
 
@@ -90,7 +91,15 @@ export function validateGenerationPlan(raw,{readiness,sources={catalogIds:[],lib
   const visited=new Set(),active=new Set();function visit(id){if(active.has(id))fail('assembly cycle');if(visited.has(id))return;active.add(id);p.assembly.find(s=>s.id===id).requires.forEach(visit);active.delete(id);visited.add(id);}steps.forEach(visit);
   if(p.parts.some(part=>!p.assembly.some(s=>s.partIds.includes(part.id))))fail('assembly coverage');
   if(p.electrical){const selected=new Set(p.electrical.components.map(c=>c.partId));refs([...p.electrical.components.map(c=>c.partId)],ids);unique(p.electrical.connections.map(c=>c.id));
-    for(const c of p.electrical.connections)if(!selected.has(c.from.partId)||!selected.has(c.to.partId))fail('connection reference');}
+    for(const component of p.electrical.components){
+      const part=p.parts.find(part=>part.id===component.partId),profile=profileById(component.profileId);
+      if(part.kind!=='purchased')fail('electrical component must be purchased: '+part.id);
+      if(profile&&part.identity.type==='catalog'&&profile.catalogId!==part.identity.catalogId)fail('electrical/CAD identity conflict: '+part.id+' profile '+profile.id+' cannot use '+part.identity.catalogId+'; use its exact source or an assumed envelope');
+    }
+    for(const c of p.electrical.connections){
+      if(!selected.has(c.from.partId)||!selected.has(c.to.partId))fail('connection reference');
+      for(const end of [c.from,c.to]){const profile=profileById(p.electrical.components.find(component=>component.partId===end.partId).profileId);if(profile&&!profile.terminals.some(t=>t.id===end.terminal))fail('unknown profile terminal: '+end.partId+':'+end.terminal);}
+    }}
   for(const k of ['buildItems','verificationRequests'])if(p[k])unique(p[k]);
   if(p.buildItems?.some(x=>ids.has(x)))fail('build item collides with part');return p;
 }

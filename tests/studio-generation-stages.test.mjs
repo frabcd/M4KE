@@ -49,11 +49,22 @@ test('planning can disclose new assumptions and unknowns without erasing intake 
 });
 
 test('partition limits and dependency invalidation preserve independent parts',()=>{
-  const p=plan(7);p.electrical={components:p.parts.slice(0,5).map(p=>({partId:p.id,profileId:'unknown'})),connections:Array.from({length:13},(_,i)=>({id:'w'+i,from:{partId:'p0',terminal:'t'+i},to:{partId:'p1',terminal:'t'+i},kind:'signal'})),control:false};
+  const p=plan(7);p.parts.slice(0,5).forEach(part=>part.kind='purchased');p.electrical={components:p.parts.slice(0,5).map(p=>({partId:p.id,profileId:'unknown'})),connections:Array.from({length:13},(_,i)=>({id:'w'+i,from:{partId:'p0',terminal:'t'+i},to:{partId:'p1',terminal:'t'+i},kind:'signal'})),control:false};
   const units=partitionGeneration(validateGenerationPlan(p,{readiness:readiness()}));
   for(const [kind,sizes]of[['part',[3,3,1]],['electricalComponent',[4,1]],['connection',[12,1]]])assert.deepEqual(units.filter(u=>u.kind===kind).map(u=>u.ids.length),sizes);
   const closure=dependentUnitKeys(units,['part-0']);assert.ok(!closure.has('part-1'));assert.ok(units.filter(u=>u.kind!=='part').every(u=>closure.has(u.key)));
   assert.equal(dependentUnitKeys(units,['plan']).size,units.length+1);
+});
+test('planning rejects electrical source substitutions before freezing identities and endpoints',()=>{
+ const p=plan();p.parts[0].kind='purchased';p.parts[0].identity={type:'catalog',catalogId:'pololu-drv8833-2130'};
+ p.electrical={components:[{partId:'p0',profileId:'adafruit-max4466-1063'}],connections:[],control:false};
+ const context={readiness:readiness(),sources:{catalogIds:['pololu-drv8833-2130'],libraryHashes:[]}};
+ assert.throws(()=>validateGenerationPlan(p,context),/electrical\/CAD identity conflict/);
+ p.parts[0].identity={type:'box'};assert.doesNotThrow(()=>validateGenerationPlan(p,context));
+ p.electrical.connections=[{id:'wire',from:{partId:'p0',terminal:'invented'},to:{partId:'p0',terminal:'GND'},kind:'ground'}];
+ assert.throws(()=>validateGenerationPlan(p,context),/unknown profile terminal/);
+ p.electrical.connections[0].from.terminal='VCC';assert.doesNotThrow(()=>validateGenerationPlan(p,context));
+ p.parts[0].kind='printed';assert.throws(()=>validateGenerationPlan(p,context),/must be purchased/);
 });
 test('units reject missing extra duplicate IDs and changed poses; assembly uses roster order',()=>{
   const p=validateGenerationPlan(plan(4),{readiness:readiness()}),units=partitionGeneration(p),u=units[0];
