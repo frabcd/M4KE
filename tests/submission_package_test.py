@@ -18,6 +18,16 @@ restore=importlib.util.module_from_spec(restore_spec);restore_spec.loader.exec_m
 
 
 class PackageTests(unittest.TestCase):
+    def test_staged_runtime_is_shipped_without_private_checkpoints(self):
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / 'staged.zip'
+            module.package(ROOT, target)
+            with zipfile.ZipFile(target) as archive:
+                for name in ['studio-generation-json', 'studio-generation-stages', 'studio-generation-checkpoints',
+                             'studio-generation-admission', 'studio-staged-generation', 'studio-staged-service']:
+                    self.assertIn('server/' + name + '.mjs', archive.namelist())
+                self.assertFalse(any(name.startswith(('data/design-checkpoints/', 'data/design-runs/', 'test-results/')) for name in archive.namelist()))
+
     def test_public_release_requires_explicit_flag_and_preserves_source_boundaries(self):
         with tempfile.TemporaryDirectory() as folder:
             private = module.package(ROOT, Path(folder) / 'review.zip')

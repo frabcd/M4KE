@@ -1,6 +1,6 @@
 # Resumable Design Generation Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Execution method awaits Mike's selection; do not delegate merely because this header lists an option.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Mike selected Native execution; implementation is inline with one independent final review.
 
 **Goal:** Resume unchanged design generation from validated units and ask essential questions before geometry, without accepting incomplete or inconsistent CAD intent.
 
@@ -181,4 +181,4 @@ Tasks 1–4 establish the private protocol and store; 5–6 establish execution/
 
 Self-review: every approved-spec section maps to Tasks 1–10. The five Review Focus cases have explicit owning tests. Method names, UnitDescriptor/GenerationResult fields and resource limits are consistent across tasks. No task claims physical acceptance or authorizes production deployment merely through completion of code. Planning refinements (storage limits, disabled flag name and cancellation API) make implementation explicit without changing the approved outcome.
 
-Status: plan prepared for Mike's review; none of the implementation checkboxes is complete. Recommended execution: Native, sequentially in this chat, followed by a whole-branch review, because the state, validation and cancellation contracts are tightly coupled. Preserve teammate ownership and re-read coordination before integration.
+Status: Tasks 1–8 implemented and individually checked. Task 9 packaging/regression and independent review in progress. Task 10 collector implemented; real original-car and non-car model/CAD/preview acceptance awaits reachable coordinated hardware and supplied essential answers. The execution ledger records exact commits, tests and rulings. No production rollout.

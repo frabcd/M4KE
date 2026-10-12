@@ -1,6 +1,6 @@
 # Resumable structured design generation
 
-Status: written specification approved by Mike on 2026-10-11. Implementation planning is authorized; product implementation has not started.
+Status: written specification approved by Mike on 2026-10-11. Native implementation authorized. Software implementation is under final regression/review; real-model and native/preview acceptance remain pending.
 
 Owner: COOP3. Baseline: `9652b1ea077f603adbc20dd848893860145fac9d`, including the maintainer's PR #9 geometry-patch retry correction. Work stays on `codex/resumable-design-generation` in COOP3's isolated checkout. The maintainer retains ownership of PR #9 and deployed service changes. Coordination occurs through the canonical DGX `texting.txt` and PR discussion; deployment requires a separate, coordinated idle window.
 
