@@ -244,6 +244,7 @@ export class StudioViewportController {
     } else {
       for (const part of this.data.parts) {
         try {
+          if(part.shape.type==='profileExtrusion'||part.shape.type==='profileLoft')throw new Error(`${part.name}: native CAD mesh required for this profile shape; no substitute geometry.`);
           if (!isPreviewShape(part.shape)) throw new Error('Unsupported concept shape; no substitute geometry.');
           if (part.shape.type === 'library') {
             const sourceSha256 = part.shape.sourceSha256;

@@ -2,10 +2,11 @@ import { createHash } from 'node:crypto';
 import { controllerDecision } from '../shared/car-contract.mjs';
 import { engineeringChecks } from '../engineering/physics.mjs';
 import {validateElectrical,electricalChecks,validateElectricalItem} from './studio-electrical.mjs';
+import {validateDatums,validateParametricShape,validatePlacement,resolvePlacement} from './studio-parametric.mjs';
 
 const ID = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
-const BASE_KEYS = ['schemaVersion', 'title', 'description', 'units', 'requirements', 'assumptions', 'unknowns', 'questions', 'parts', 'assembly', 'physicsInputs', 'verificationRequests', 'electrical', 'buildItems'];
-const PART_KEYS = ['id', 'name', 'kind', 'material', 'color', 'shape', 'position', 'rotation', 'fillet', 'holes', 'pockets', 'source', 'explanation'];
+const BASE_KEYS = ['schemaVersion', 'geometryVersion', 'placement', 'title', 'description', 'units', 'requirements', 'assumptions', 'unknowns', 'questions', 'parts', 'assembly', 'physicsInputs', 'verificationRequests', 'electrical', 'buildItems'];
+const PART_KEYS = ['id', 'datums', 'name', 'kind', 'material', 'color', 'shape', 'position', 'rotation', 'fillet', 'holes', 'pockets', 'source', 'explanation'];
 export const PHYSICS_RANGES = Object.freeze(Object.fromEntries(Object.entries({
   massKg: [0.01, 10], rollingResistance: [0, 2], wheelRadiusMm: [1, 250], motorTorqueNm: [0.00001, 20],
   driveMotors: [1, 8], motorVoltage: [1, 24], batteryVoltage: [1, 24], motorStallA: [0.001, 100],
@@ -63,7 +64,7 @@ const primitiveMinimum = shape => shape.type === 'box' ? Math.min(...shape.size)
 /** Strict, inert data only: no executable CAD scripts, templates, links to execute or extra keys. */
 function validatePart(part, path) {
       object(part, PART_KEYS, path);
-      const shape = object(part.shape, ['type', 'size', 'radius', 'height', 'catalogId', 'sourceSha256', 'solids'], `${path}.shape`);
+      const shape = object(part.shape, ['type', 'size', 'radius', 'height', 'catalogId', 'sourceSha256', 'solids','points','sections'], `${path}.shape`);
       let cleanShape;
       if (shape.type === 'box') {
         object(shape, ['type', 'size'], `${path}.shape`);
@@ -75,6 +76,10 @@ function validatePart(part, path) {
         object(shape, ['type', 'solids'], `${path}.shape`);
         if (part.kind !== 'printed') fail(`${path}.shape`, 'union geometry is only allowed for printed parts');
         cleanShape = {type:'union', solids:array(shape.solids, 2, 8, `${path}.shape.solids`, unionPrimitive)};
+      } else if (['profileExtrusion','profileLoft'].includes(shape.type)) {
+        if(part.kind!=='printed')fail(`${path}.shape`,'profile geometry is only allowed for printed parts');
+        cleanShape=validateParametricShape(shape,`${path}.shape`);
+        if(part.fillet)fail(`${path}.fillet`,'profile fillets are not supported by this contract');
       } else if (shape.type === 'library') {
         object(shape, ['type','sourceSha256'], `${path}.shape`);
         if(typeof shape.sourceSha256!=='string'||!/^[a-f0-9]{64}$/.test(shape.sourceSha256))fail(`${path}.shape.sourceSha256`,'full lowercase source SHA256 required');
@@ -92,7 +97,8 @@ function validatePart(part, path) {
         kind: oneOf(part.kind, ['printed', 'purchased'], `${path}.kind`), material: string(part.material, `${path}.material`, 160), color: part.color.toUpperCase(),
         shape: cleanShape, position: vector(part.position, -500, 500, `${path}.position`), rotation: vector(part.rotation, -360, 360, `${path}.rotation`),
       };
-      const smallest = ['catalog','library'].includes(cleanShape.type) ? 0 : cleanShape.type === 'union' ? Math.min(...cleanShape.solids.map(primitiveMinimum)) : primitiveMinimum(cleanShape);
+      if(part.datums!==undefined)result.datums=validateDatums(part.datums,`${path}.datums`);
+      const smallest = ['catalog','library','profileExtrusion','profileLoft'].includes(cleanShape.type) ? 0 : cleanShape.type === 'union' ? Math.min(...cleanShape.solids.map(primitiveMinimum)) : primitiveMinimum(cleanShape);
       if (part.fillet !== undefined) result.fillet = number(part.fillet, 0, Math.min(100,smallest * 0.49), `${path}.fillet`);
       if (part.holes !== undefined) result.holes = array(part.holes, 0, 24, `${path}.holes`, (hole, p) => {
         object(hole, ['axis', 'diameter', 'position', 'depth'], p);
@@ -212,6 +218,9 @@ export function validateDesignSpec(input) {
     assembly: array(input.assembly, 0, 48, 'assembly', validateAssembly),
   };
   for (const key of ['requirements', 'questions', 'parts', 'assembly']) unique(spec[key].map((x) => x.id), key);
+  if(input.geometryVersion!==undefined){if(input.geometryVersion!==2)fail('geometryVersion','expected 2');spec.geometryVersion=2;}
+  if(spec.geometryVersion!==2&&(input.placement!==undefined||spec.parts.some(p=>p.datums||['profileExtrusion','profileLoft'].includes(p.shape.type))))fail('geometryVersion','new geometry and placement require geometryVersion:2');
+  if(input.placement!==undefined){spec.placement=validatePlacement(input.placement,spec.parts,spec.requirements);spec.parts=resolvePlacement(spec.parts,spec.placement);}
   if (!spec.parts.length && !spec.questions.length) fail('parts', 'provide at least one part or an essential clarification question');
   if (spec.parts.length && !spec.assembly.length) fail('assembly', 'every design part needs an assembly or inspection step');
   const partIds = new Set(spec.parts.map((x) => x.id));
@@ -255,6 +264,10 @@ export function verifyDesign(input, cadResult = null) {
   add('clarifications', 'Essential clarification questions resolved', spec.questions.length ? 'UNKNOWN' : 'PASS', true, 'Outstanding-question count', spec.questions.map((q) => `${q.id}: ${q.question}`).join('; ') || 'No declared pending questions', 'No unanswered essential questions before release', 'The absence of a question is not proof that the model found every missing input.');
   add('declared-unknowns', 'Declared unknowns resolved', spec.unknowns.length ? 'UNKNOWN' : 'PASS', true, 'Unknown-input inventory', spec.unknowns.join('; ') || 'No declared unknowns', 'Resolve design-dependent unknowns with evidence', 'A model cannot verify an assumption merely by omitting it from this list.');
   const matching = cadResult && cadResult.revisionHash === revisionHash;
+  for(const attachment of spec.placement?.attachments||[]){
+    const records=matching?(cadResult.checks||[]).filter(c=>c.id===`attachment:${attachment.id}`):[];
+    if(records.length!==1)add(`attachment-evidence-${attachment.id}`,'Declared attachment evidence','UNKNOWN',true,'Exact current-revision native check coverage',`${records.length} matching records`,attachment.verification,'Missing or duplicate attachment evidence cannot establish contact or frame consistency.');
+  }
   if (!matching) {
     add('cad-solids', 'Current-revision CAD kernel solids', 'UNKNOWN', true, 'Revision-bound CAD worker result', cadResult ? 'Stale or missing revision hash' : 'No kernel result', 'Matching revision; exactly one valid positive-volume solid per declared part', 'A render, filename, model assertion or earlier revision is not CAD evidence.');
   } else {

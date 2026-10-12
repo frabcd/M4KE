@@ -9,7 +9,7 @@ import {catalogContext} from './studio-catalog.mjs';import {electricalPromptCont
 import {admitGeneratedDesign} from './studio-generation-admission.mjs';
 import {designHash,verifyDesign} from './studio-contract.mjs';import {REQUEST_GUIDANCE} from './studio-request-constraints.mjs';
 const conflict=message=>Object.assign(new Error(message),{status:409});
-const validatorFiles=['studio-contract.mjs','studio-electrical.mjs','studio-electrical-profiles.mjs','studio-generation-stages.mjs','studio-generation-admission.mjs','studio-generation-checkpoints.mjs','studio-generation-json.mjs','studio-staged-generation.mjs','studio-staged-service.mjs','studio-request-constraints.mjs','studio-generation-diagnostics.mjs','studio-schema.mjs','studio-catalog.mjs'];
+const validatorFiles=['studio-contract.mjs','studio-parametric.mjs','studio-electrical.mjs','studio-electrical-profiles.mjs','studio-generation-stages.mjs','studio-generation-admission.mjs','studio-generation-checkpoints.mjs','studio-generation-json.mjs','studio-staged-generation.mjs','studio-staged-service.mjs','studio-request-constraints.mjs','studio-generation-diagnostics.mjs','studio-schema.mjs','studio-catalog.mjs'];
 
 
 // Route verbatim upstream sections; new headings are retained at every stage.

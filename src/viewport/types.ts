@@ -1,6 +1,8 @@
 export type PointMm = [number, number, number];
 export type BasicShape = {type: 'box'; size: PointMm} | {type: 'cylinder'; radius: number; height: number};
 export type ToyShape = BasicShape | {type: 'catalog'; catalogId: string}
+  | {type:'profileExtrusion';points:[number,number][];height:number}
+  | {type:'profileLoft';sections:{z:number;points:[number,number][]}[]}
   | {type: 'library'; sourceSha256: string}
   | {type: 'union'; solids: (BasicShape & {position: PointMm; rotation: PointMm})[]};
 export type ToyPart = {

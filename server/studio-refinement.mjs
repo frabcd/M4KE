@@ -6,8 +6,8 @@ import {validateRepair} from './studio-repair.mjs';
 import {OLLAMA_DESIGN_SCHEMA} from './studio-schema.mjs';
 import {truncationRecovery} from './studio-output-budget.mjs';
 
-const PRINTED=['position','rotation','color','material','shape','fillet','holes','pockets','explanation'];
-const SOURCE=['position','rotation','explanation'];
+const PRINTED=['position','rotation','color','material','shape','fillet','holes','pockets','explanation','datums'];
+const SOURCE=['position','rotation','explanation','datums'];
 const fail=message=>{throw Object.assign(new Error(message),{status:422});};
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const object=(properties,required=Object.keys(properties))=>({type:'object',properties,required,additionalProperties:false});
@@ -33,8 +33,8 @@ export function buildRefinementSchema(input){
   const variants=[];
   for(const immutable of [false,true])for(const needsExplanation of [false,true]){
     const ids=spec.parts.filter(p=>source(p)===immutable&&(!p.explanation)===needsExplanation).map(p=>p.id);if(!ids.length)continue;
-    const fields=Object.fromEntries((immutable?SOURCE:PRINTED).map(key=>[key,structuredClone(properties[key])]));
-    if(fields.shape)fields.shape.anyOf=fields.shape.anyOf.filter(option=>!option.properties.type.enum.some(type=>['catalog','library'].includes(type)));
+    const fields=Object.fromEntries((immutable?SOURCE:PRINTED).filter(key=>key!=='datums'||spec.geometryVersion===2).map(key=>[key,structuredClone(properties[key])]));
+    if(fields.shape)fields.shape.anyOf=fields.shape.anyOf.filter(option=>!option.properties.type.enum.some(type=>['catalog','library',...(spec.geometryVersion===2?[]:['profileExtrusion','profileLoft'])].includes(type)));
     variants.push(object({partId:{type:'string',enum:ids},reason:{type:'string'},changes:{...object(fields,needsExplanation?['explanation']:[]),minProperties:1}}));
   }
   return object({action:{type:'string',enum:['patch','questions','redesign']},message:{type:'string'},updates:{type:'array',maxItems:12,items:{anyOf:variants}},questions:structuredClone(OLLAMA_DESIGN_SCHEMA.properties.questions)});
@@ -80,7 +80,7 @@ export function refinementEffects(before,after){
   return after.parts.flatMap(part=>{
     const previous=before.parts.find(p=>p.id===part.id);if(!previous)return [];
     const changed=fields=>fields.filter(key=>JSON.stringify(previous[key])!==JSON.stringify(part[key]));
-    const geometry=changed(['shape','fillet','holes','pockets']),placement=changed(['position','rotation']),appearance=changed(['color','material']);
+    const geometry=changed(['shape','fillet','holes','pockets']),placement=changed(['position','rotation','datums']),appearance=changed(['color','material']);
     return geometry.length||placement.length||appearance.length ? [{partId:part.id,geometry,placement,appearance}] : [];
   });
 }

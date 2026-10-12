@@ -3,6 +3,7 @@ import {DESIGN_JSON_SCHEMA} from './studio-schema.mjs';
 import {ELECTRICAL_JSON_SCHEMA} from './studio-electrical.mjs';
 import {validateGenerationItem} from './studio-contract.mjs';
 import {parseGenerationJson} from './studio-generation-json.mjs';
+import {validatePlacement} from './studio-parametric.mjs';
 
 const D=DESIGN_JSON_SCHEMA.properties,E=ELECTRICAL_JSON_SCHEMA.properties;
 const obj=(properties,required=Object.keys(properties))=>({type:'object',properties,required,additionalProperties:false});
@@ -17,12 +18,13 @@ export const READINESS_SCHEMA={anyOf:[
   obj({status:{const:'ready'},requirements:D.requirements,assumptions:D.assumptions,unknowns:D.unknowns,questions:{...D.questions,maxItems:0}}),
   QUESTIONS_SCHEMA,
 ]};
-const identity={anyOf:[obj({type:{enum:['box','cylinder','union']}}),obj({type:{const:'catalog'},catalogId:id}),obj({type:{const:'library'},sourceSha256:{type:'string',pattern:'^[a-f0-9]{64}$'}})]};
+const identity={anyOf:[obj({type:{enum:['box','cylinder','union','profileExtrusion','profileLoft']}}),obj({type:{const:'catalog'},catalogId:id}),obj({type:{const:'library'},sourceSha256:{type:'string',pattern:'^[a-f0-9]{64}$'}})]};
 export const PLAN_SCHEMA=obj({title:D.title,description:D.description,units:D.units,requirements:D.requirements,assumptions:D.assumptions,unknowns:D.unknowns,
-  parts:arr(obj({id,kind:D.parts.items.properties.kind,position:D.parts.items.properties.position,rotation:D.parts.items.properties.rotation,source:nullable(text),identity,interfaceIntent:text}),24,1),
+  geometryVersion:D.geometryVersion,placement:D.placement,
+  parts:arr(obj({id,datumIds:arr(id,16,1),kind:D.parts.items.properties.kind,position:D.parts.items.properties.position,rotation:D.parts.items.properties.rotation,source:nullable(text),identity,interfaceIntent:text},['id','kind','position','rotation','source','identity','interfaceIntent']),24,1),
   assembly:arr(obj({id,partIds:arr(id,24,1),requires:arr(id,47)}),48,1),
   electrical:nullable(obj({components:arr(obj({partId:id,profileId:text}),32,1),connections:arr(obj({id,from:E.connections.items.properties.from,to:E.connections.items.properties.to,kind:E.connections.items.properties.kind}),96),control:bool})),
-  buildItems:nullable(arr(id,40)),verificationRequests:nullable(arr(id,12)),physicsInputs:bool});
+  buildItems:nullable(arr(id,40)),verificationRequests:nullable(arr(id,12)),physicsInputs:bool},['title','description','units','requirements','assumptions','unknowns','parts','assembly','electrical','buildItems','verificationRequests','physicsInputs']);
 
 function fail(message){throw Object.assign(new Error(message),{code:'GENERATION_CONTRACT'});}
 /** Small validator for the closed schema vocabulary used here (not arbitrary JSON Schema). */
@@ -59,10 +61,13 @@ export function validateGenerationPlan(raw,{readiness,sources={catalogIds:[],lib
   for(const k of ['assumptions','unknowns'])if(!Array.isArray(readiness?.[k])||!equal(p[k].slice(0,readiness[k].length),readiness[k]))fail('preserve readiness '+k);
   const ids=new Set(p.parts.map(x=>x.id)),steps=new Set(p.assembly.map(x=>x.id));
   unique(p.parts.map(x=>x.id));unique(p.assembly.map(x=>x.id));
+  if(p.geometryVersion!==2&&(p.placement||p.parts.some(x=>x.datumIds||['profileExtrusion','profileLoft'].includes(x.identity.type))))fail('geometryVersion:2 required');
+  for(const part of p.parts)if(part.datumIds)unique(part.datumIds);
+  if(p.placement)validatePlacement(p.placement,p.parts,p.requirements);
   for(const part of p.parts){
     if(part.identity.type==='catalog'&&(part.kind!=='purchased'||!sources.catalogIds.includes(part.identity.catalogId)))fail('unadmitted catalog identity');
     if(part.identity.type==='library'&&!sources.libraryHashes.includes(part.identity.sourceSha256))fail('unadmitted library identity');
-    if(part.identity.type==='union'&&part.kind!=='printed')fail('union must be printed');
+    if(['union','profileExtrusion','profileLoft'].includes(part.identity.type)&&part.kind!=='printed')fail('authored geometry must be printed');
   }
   const refs=(xs,set)=>{unique(xs);if(xs.some(x=>!set.has(x)))fail('unknown reference');};
   for(const s of p.assembly){refs(s.partIds,ids);refs(s.requires,steps);}
@@ -103,6 +108,7 @@ export function validateGenerationUnit(p,u,raw,completed){
     if(u.kind==='part'){
       const r=p.parts.find(r=>r.id===x.id),{type,catalogId,sourceSha256}=x.shape,identity={type,...catalogId?{catalogId}:{},...sourceSha256?{sourceSha256}:{}};
       if(!equal(identity,r.identity)||x.kind!==r.kind||!equal(x.position,r.position)||!equal(x.rotation,r.rotation)||(x.source??null)!==r.source)fail('immutable part identity/pose/source');
+      if(!equal((x.datums||[]).map(d=>d.id).sort(),[...(r.datumIds||[])].sort()))fail('immutable datum roster');
     }
     if(u.kind==='assembly'){const r=p.assembly.find(r=>r.id===x.id);if(!equal(x.partIds,r.partIds)||!equal(x.requires,r.requires))fail('immutable assembly references');}
     if(u.kind==='electricalComponent'&&x.profileId!==p.electrical.components.find(r=>r.partId===x.partId).profileId)fail('immutable electrical identity');
@@ -115,5 +121,5 @@ export function assembleGeneration(p,records){
   for(const u of units){const rs=records.filter(r=>r.key===u.key&&r.status==='UNIT_VALIDATED');if(rs.length!==1)fail('missing/duplicate unit '+u.key);validated.push({...rs[0],payload:validateGenerationUnit(p,u,rs[0].payload,validated)});}
   const items=kind=>validated.filter(r=>r.key.startsWith(kind+'-')).flatMap(r=>r.payload.items);
   const metadata=validated.find(r=>r.key==='metadata-0').payload,{control,...rest}=metadata;
-  return {schemaVersion:1,...Object.fromEntries(['title','description','units','requirements','assumptions','unknowns'].map(k=>[k,p[k]])),questions:[],parts:items('part'),assembly:items('assembly'),...rest,...p.buildItems!==null?{buildItems:items('buildItem')}:{},...p.electrical?{electrical:{schemaVersion:1,components:items('electricalComponent'),connections:items('connection'),...control?{control}:{}}}:{}};
+  return {schemaVersion:1,...p.geometryVersion?{geometryVersion:p.geometryVersion}:{},...p.placement?{placement:p.placement}:{},...Object.fromEntries(['title','description','units','requirements','assumptions','unknowns'].map(k=>[k,p[k]])),questions:[],parts:items('part'),assembly:items('assembly'),...rest,...p.buildItems!==null?{buildItems:items('buildItem')}:{},...p.electrical?{electrical:{schemaVersion:1,components:items('electricalComponent'),connections:items('connection'),...control?{control}:{}}}:{}};
 }

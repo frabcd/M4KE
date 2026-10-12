@@ -159,9 +159,12 @@ def validate_spec(spec):
     if not isinstance(parts, list) or not 1 <= len(parts) <= MAX_PARTS:
         raise SpecError(f"parts must contain 1..{MAX_PARTS} parts")
     ids = set()
+    if spec.get('geometryVersion') is not None or spec.get('placement') is not None or any(isinstance(p,dict) and ('datums' in p or p.get('shape',{}).get('type') in ('profileExtrusion','profileLoft')) for p in parts):
+        from parametric_geometry import validate_extension
+        validate_extension(spec)
     for i, p in enumerate(parts):
         label = f"parts[{i}]"
-        exact_keys(p, {"id", "name", "kind", "material", "color", "shape", "position", "rotation", "fillet", "holes", "pockets", "source", "explanation"}, label)
+        exact_keys(p, {"id", "datums", "name", "kind", "material", "color", "shape", "position", "rotation", "fillet", "holes", "pockets", "source", "explanation"}, label)
         if not isinstance(p.get("id"), str) or not ID_RE.fullmatch(p["id"]) or p["id"] in ids:
             raise SpecError(f"{label}.id must be a unique safe ASCII identifier")
         ids.add(p["id"])
@@ -220,6 +223,10 @@ def validate_spec(spec):
                     raise SpecError(f"{at}: no nested union, catalog or executable member")
                 member["position"] = vector(member.get("position"), f"{at}.position", -250, 250)
                 member["rotation"] = vector(member.get("rotation"), f"{at}.rotation", -360, 360)
+        elif shape.get('type') in ('profileExtrusion','profileLoft'):
+            from parametric_geometry import validate_shape
+            validate_shape(shape)
+            minimum = 0
         elif shape.get("type") == "library":
             exact_keys(shape, {"type", "sourceSha256"}, f"{label}.shape")
             if not isinstance(shape.get("sourceSha256"), str) or not re.fullmatch(r"[a-f0-9]{64}", shape["sourceSha256"]):
@@ -322,8 +329,12 @@ def sha(path):
 
 
 def bounds(shape):
-    b = shape.BoundingBox()
-    return {"min": [b.xmin, b.ymin, b.zmin], "max": [b.xmax, b.ymax, b.zmax]}
+    from OCP.Bnd import Bnd_Box
+    from OCP.BRepBndLib import BRepBndLib
+    box = Bnd_Box()
+    BRepBndLib.AddOptimal_s(shape.wrapped, box, False, False)
+    coordinates = box.Get()
+    return {"min": list(coordinates[:3]), "max": list(coordinates[3:])}
 
 
 def dimension_error(a, b):
@@ -382,6 +393,9 @@ def build_shape(cq, part):
         if any(bb["max"][i] - bb["min"][i] > 500.000001 for i in range(3)):
             raise SpecError("union local extent exceeds 500 mm")
         work = cq.Workplane("XY").newObject([fused])
+    elif s['type'] in ('profileExtrusion','profileLoft'):
+        from parametric_geometry import build
+        work = cq.Workplane('XY').newObject([build(cq,s)])
     elif s["type"] == "box":
         work = cq.Workplane("XY").box(*s["size"])
     else:
@@ -673,6 +687,9 @@ def run(spec, output, diagnostics=None):
         check("physical:function", "Physical operation", "UNKNOWN", "Not tested", "No built hardware observed", "Actual physical test with measured results", "Rendered geometry and software tests cannot prove physical function."),
         check("purchased:interfaces", "Purchased component interfaces", "UNKNOWN", "Source-bound catalog geometry or explicitly labelled envelopes; physical fit not measured", [p["id"] for p in spec["parts"] if p["kind"] == "purchased"], "Supplier drawings or measured dimensions and tolerance stack", "No fabricated supplier dimensions or fit certification.")])
     result['checks'].extend(requested_checks(cq,spec,world_shapes,diagnostics,world_bounds,known_intersections))
+    if spec.get('placement'):
+        from parametric_geometry import attachment_checks
+        result['checks'].extend(timed(diagnostics,'attachment-checks','declared-frames',lambda:attachment_checks(spec,world_shapes)))
     if catalog_records:
         from catalog_mates import catalog_mate_checks
         result['checks'].extend(timed(diagnostics,'catalog-mates','selected-interfaces',lambda:catalog_mate_checks(spec,catalog_locals,catalog_records)))

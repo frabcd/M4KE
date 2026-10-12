@@ -84,6 +84,7 @@ test('concept shapes reject unsupported, negative or malformed geometry', () => 
   assert.equal(isPreviewShape({type: 'catalog', catalogId: 'motor'}), true);
   assert.equal(isPreviewShape({type: 'library', sourceSha256: 'a'.repeat(64)}), true);
   assert.equal(isPreviewShape({type: 'library', sourceSha256: 'a'.repeat(16)}), false);
+  for(const shape of [{type:'profileExtrusion',points:[[0,0],[3,0],[0,3]],height:2},{type:'profileLoft',sections:[]}])assert.equal(isPreviewShape(shape),false,'Profiles require native CAD artifacts; no primitive preview fallback');
   const member = {type: 'box', size: [1, 2, 3], position: [0, 0, 0], rotation: [0, 90, 0]};
   assert.equal(isPreviewShape({type: 'union', solids: [member, member]}), true);
   for (const shape of [null, {}, {type: 'sphere'}, {type: 'box', size: [1, -1, 1]}, {type: 'box', size: [1, NaN, 1]}, {type: 'cylinder', radius: 0, height: 3}, {type: 'union', solids: [member]}]) assert.equal(isPreviewShape(shape), false);
