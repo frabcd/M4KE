@@ -150,4 +150,4 @@ Acceptance requires demonstrated reuse without reduced correctness and no premat
 
 ## Review and next step
 
-Self-review completed for scope, immutable IDs, conservative invalidation, finite retry/split/resume budgets, compatibility and evidence claims. Mike approved this written specification on 2026-10-11 and requested the implementation plan. It does not describe implemented functionality; plan review and execution selection precede code changes.
+Mike approved this specification and Native implementation. Software implementation, PR10 integration, independent review fixes and isolated Windows/Linux verification are complete; see docs/resumable-generation.md for evidence and rulings. The real-model car/non-car CAD and connected-preview acceptance remains pending, and production has not been switched.
