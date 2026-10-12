@@ -1,6 +1,24 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {validateReadiness,validateGenerationPlan,partitionGeneration,validateGenerationUnit,assembleGeneration,dependentUnitKeys} from '../server/studio-generation-stages.mjs';
-import {readiness,plan,payload} from './helpers/staged-generation-fixture.mjs';
+import {readiness,plan,payload,proposal} from './helpers/staged-generation-fixture.mjs';
+import {validateGenerationProposal,planProposalSchema} from '../server/studio-generation-stages.mjs';
+
+test('host copies intake text exactly while model proposes only bounded new disclosures',()=>{
+ const r={...readiness(),assumptions:['原始假设：不改变'],unknowns:['原始缺口：未经实测']},p={...plan(),assumptions:[...r.assumptions,'New assumption'],unknowns:[...r.unknowns,'New uncertainty']};
+ const before=JSON.stringify(r),generated=proposal(p,r),result=validateGenerationProposal(generated,{readiness:r});
+ assert.deepEqual(result.requirements,r.requirements);assert.deepEqual(result.assumptions,p.assumptions);assert.deepEqual(result.unknowns,p.unknowns);assert.equal(JSON.stringify(r),before);
+ for(const key of ['requirements','assumptions','unknowns'])assert.throws(()=>validateGenerationProposal({...generated,[key]:[]},{readiness:r}),/unsupported key/);
+ const full={...r,assumptions:Array(40).fill('A'),unknowns:Array(40).fill('U')},schema=planProposalSchema(full);
+ assert.equal(schema.properties.newAssumptions.maxItems,0);assert.equal(schema.properties.newUnknowns.maxItems,0);
+ assert.throws(()=>validateGenerationProposal({...generated,newAssumptions:['Overflow']},{readiness:full}),/cardinality/);
+});
+test('plan decoder admits only frozen native source identities, not electrical profile IDs',()=>{
+ const sources={catalogIds:['pololu-wheel-1420'],libraryHashes:['a'.repeat(64)]},schema=planProposalSchema(readiness(),sources),identity=schema.properties.parts.items.properties.identity;
+ for(const candidate of [{type:'box'},{type:'catalog',catalogId:'pololu-wheel-1420'},{type:'library',sourceSha256:'a'.repeat(64)}])assert.doesNotThrow(()=>assertGenerationSchema(candidate,identity));
+ for(const candidate of [{type:'catalog',catalogId:':momentary-arm-no'},{type:'catalog',catalogId:'esp32-devkitc-v4-wroom32e'},{type:'library',sourceSha256:'b'.repeat(64)}])assert.throws(()=>assertGenerationSchema(candidate,identity));
+ const empty=planProposalSchema(readiness(),{catalogIds:[],libraryHashes:[]}).properties.parts.items.properties.identity;
+ assert.equal(empty.anyOf.length,1);assert.doesNotThrow(()=>assertGenerationSchema({type:'box'},empty));assert.throws(()=>assertGenerationSchema({type:'catalog',catalogId:'invented'},empty));
+});
 test('readiness rejects geometry, contradictory status and excess questions',()=>{
   assert.deepEqual(validateReadiness(readiness()),readiness());
   assert.throws(()=>validateReadiness({...readiness(),parts:[]}));
@@ -47,6 +65,16 @@ test('units reject missing extra duplicate IDs and changed poses; assembly uses 
   const spec=assembleGeneration(p,records);assert.deepEqual(spec.parts.map(x=>x.id),p.parts.map(x=>x.id));assert.equal(spec.electrical,undefined);
   assert.throws(()=>assembleGeneration(p,records.slice(1)));
 });
-import {READINESS_SCHEMA,assertGenerationSchema} from '../server/studio-generation-stages.mjs';
+import {READINESS_SCHEMA,assertGenerationSchema,schemaForGenerationUnit} from '../server/studio-generation-stages.mjs';
 import {ollamaProjection} from '../server/studio-schema.mjs';
+
+test('part decoder freezes each assigned identity, pose and nullable source like host validation',()=>{
+ const p=plan(2),u=partitionGeneration(p)[0],good=payload(p,u);for(const part of good.items)part.color='#808080';
+ for(const schema of [schemaForGenerationUnit(p,u),ollamaProjection(schemaForGenerationUnit(p,u))]){
+  assert.doesNotThrow(()=>assertGenerationSchema(good,schema));
+  for(const mutate of [v=>v.items[0].position=[0,-60,18],v=>v.items[0].rotation=[90,0,0],v=>v.items[0].kind='purchased',v=>v.items[0].source='invented',v=>v.items[0].shape={type:'cylinder',radius:18,height:140},v=>v.items[0].id='outside']){
+   const bad=structuredClone(good);mutate(bad);assert.throws(()=>assertGenerationSchema(bad,schema));
+  }
+ }
+});
 test('decoder readiness alternatives enforce the same status/question invariant as host',()=>{const question={id:'q1',question:'Which interface?'};for(const schema of [READINESS_SCHEMA,ollamaProjection(READINESS_SCHEMA)]){assert.doesNotThrow(()=>assertGenerationSchema(readiness(),schema));assert.doesNotThrow(()=>assertGenerationSchema({...readiness(),status:'questions',questions:[question]},schema));assert.throws(()=>assertGenerationSchema({...readiness(),status:'ready',questions:[question]},schema));assert.throws(()=>assertGenerationSchema({...readiness(),status:'questions',questions:[]},schema));}});

@@ -5,6 +5,18 @@ import {mkdtemp,mkdir,writeFile,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';import path from 'node:path';import {randomUUID} from 'node:crypto';
 import {createGenerationCheckpointStore,generationIdentity,hashGenerationValue} from '../server/studio-generation-checkpoints.mjs';
 
+test('expected-source preflight rejects an empty substituted catalog before project or inference creation',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'m4ke-source-pin-'));let writes=0;
+ await assert.rejects(()=>runBenchmark({coordinated:true,endpoint:'http://127.0.0.1:4173',model:'fixture',dataRoot:root,out:path.join(root,'result'),brief:{request:'fixture',answers:[],budget:''},timeoutMs:1000,expectedCatalogSha256:'a'.repeat(64),fetchJson:async(url,options)=>{
+  if(options.method==='POST')writes++;
+  if(url.endsWith('/settings'))return {model:'fixture',provider:'ollama'};
+  if(url.endsWith('/capabilities'))return {workflow:{stagedGeneration:true}};
+  if(url.endsWith('/catalog'))return {manifestSha256:'b'.repeat(64),components:[]};
+  throw Error('Unexpected request');
+ }}),/expected source snapshot/);
+ assert.equal(writes,0);
+});
+
 test('clarification and partial results cannot claim CAD, preview or current prices',()=>{
   const p={request:'fixture',answers:[],budget:'',workflow:{status:'questions'},pendingQuestions:[{id:'power',question:'Supply voltage?'}]};
   const r=benchmarkReceipt({project:p,checkpoint:null,job:null,elapsedMs:2000});

@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import * as service from '../server/studio-staged-service.mjs';
 import {loadStudioSkills,buildDesignMessages} from '../server/studio-skills.mjs';
-import {PLAN_SCHEMA} from '../server/studio-generation-stages.mjs';
+import {PLAN_PROPOSAL_SCHEMA as PLAN_SCHEMA} from '../server/studio-generation-stages.mjs';
 import {plan,readiness} from './helpers/staged-generation-fixture.mjs';
 const build=args=>(service.buildStagedMessages??(({contextSnapshot})=>contextSnapshot.messages))(args);
 
@@ -27,12 +27,25 @@ test('plan output structure reaches the model and disclosed preferences stay del
 
 test('planning sees executable geometry and contact rules before freezing poses',async()=>{
  const c=await fixture(),system=build({unit:{kind:'plan'},contextSnapshot:c,state:{}})[0].content;
- for(const heading of ['Strict geometry grammar','Functional geometry self-check before responding']){
+ for(const heading of ['Functional geometry self-check before responding']){
   const section=c.stageSkills.design.split(/(?=^#{1,2} )/m).find(s=>s.startsWith('## '+heading));
   assert.ok(section);assert.ok(system.includes(section),'Pose-freezing planning must receive '+heading+' verbatim');
  }
  assert.match(system,/unrotated cylinder's axis is Z/);
  assert.match(system,/Distinct rigid parts must NOT intersect/);
+});
+
+test('planning fits with realistic intake disclosures and keeps every distinct control fact',async()=>{
+ const c=await fixture(),original=JSON.parse(c.messages[1].content),control={id:'control',rules:'Keep stop/disarm enabled',rating:{value:5,basis:'ASSUMED'}};
+ original.electricalProfiles.controlProfile=control;original.electricalProfiles.controlProfiles=[control,{id:'different',rules:'Additional source facts'}];c.messages[1].content=JSON.stringify(original);
+ const before=JSON.stringify(c),state={readiness:{...readiness(),assumptions:Array(8).fill('A'.repeat(200)),unknowns:Array(8).fill('U'.repeat(200))}};
+ const messages=build({unit:{kind:'plan'},contextSnapshot:c,state}),data=JSON.parse(messages[1].content);
+ assert.equal(data.electricalProfiles.controlProfile,undefined);assert.deepEqual(data.electricalProfiles.controlProfiles,original.electricalProfiles.controlProfiles);
+ messages.push({role:'user',content:JSON.stringify({stage:'plan',assignedIds:[],readiness:state.readiness,plan:null,dependencies:[],validationError:null,repairContext:null,instruction:'S'.repeat(800)})});
+ assert.ok(Buffer.byteLength(JSON.stringify(messages))+4000+1024<65536);
+ assert.equal(JSON.stringify(c),before);
+ original.electricalProfiles.controlProfile={...control,rating:{value:6,basis:'ASSUMED'}};c.messages[1].content=JSON.stringify(original);
+ assert.deepEqual(JSON.parse(build({unit:{kind:'plan'},contextSnapshot:c,state})[1].content).electricalProfiles.controlProfile,original.electricalProfiles.controlProfile);
 });
 async function fixture(){const skills=await loadStudioSkills();const data={request:'Build the requested object; no Raspberry Pi.',answers:{budget:'300 CNY'},localCatalog:{components:Array.from({length:24},(_,i)=>({id:'c'+i,name:'Component '+i,geometry:{type:'catalog',catalogId:'c'+i},sourceFacts:'A'.repeat(1000)}))},electricalProfiles:{profiles:Array.from({length:12},(_,i)=>({id:'profile'+i,terminals:[{id:'VCC',description:'B'.repeat(800)}]}))},nativeLibrary:null,candidateReferences:{text:'C'.repeat(6000)},sourcingContext:{entries:[]}};return {stageSkills:skills,messages:[{role:'system',content:buildDesignMessages({request:data.request,skills})[0].content},{role:'user',content:JSON.stringify(data)}]};}
 test('real-size catalog no longer blocks intake or plan before dispatch',async()=>{const c=await fixture();assert.ok(Buffer.byteLength(JSON.stringify(c.messages))>65536);for(const kind of ['readiness','plan']){const m=build({unit:{kind},contextSnapshot:c,state:{}});assert.ok(Buffer.byteLength(JSON.stringify(m))+4000+1024<65536,kind+' must fit with reserved output');assert.match(JSON.stringify(m),/300 CNY/);assert.match(JSON.stringify(m),/no Raspberry Pi/);}});

@@ -24,6 +24,27 @@ export const PLAN_SCHEMA=obj({title:D.title,description:D.description,units:D.un
   electrical:nullable(obj({components:arr(obj({partId:id,profileId:text}),32,1),connections:arr(obj({id,from:E.connections.items.properties.from,to:E.connections.items.properties.to,kind:E.connections.items.properties.kind}),96),control:bool})),
   buildItems:nullable(arr(id,40)),verificationRequests:nullable(arr(id,12)),physicsInputs:bool});
 
+// Intake text is already durable. Generate only new disclosures; the host copies
+// the exact originals into the same final plan contract, without model rewrites.
+const {requirements:_requirements,assumptions:_assumptions,unknowns:_unknowns,...planChoices}=PLAN_SCHEMA.properties;
+export const PLAN_PROPOSAL_SCHEMA=obj({...planChoices,newAssumptions:D.assumptions,newUnknowns:D.unknowns});
+export function planProposalSchema(readiness,sources){
+  const schema=structuredClone(PLAN_PROPOSAL_SCHEMA);
+  if(sources){
+    const alternatives=schema.properties.parts.items.properties.identity.anyOf;
+    alternatives[1].properties.catalogId={...id,enum:[...sources.catalogIds]};
+    alternatives[2].properties.sourceSha256={type:'string',enum:[...sources.libraryHashes]};
+    schema.properties.parts.items.properties.identity.anyOf=alternatives.filter((_,i)=>i===0||(i===1?sources.catalogIds:sources.libraryHashes).length);
+  }
+  schema.properties.newAssumptions.maxItems=40-(readiness?.assumptions?.length||0);
+  schema.properties.newUnknowns.maxItems=40-(readiness?.unknowns?.length||0);
+  return schema;
+}
+export function validateGenerationProposal(raw,context){
+  const {newAssumptions,newUnknowns,...choices}=safe(raw,planProposalSchema(context.readiness,context.sources));
+  return validateGenerationPlan({...choices,requirements:context.readiness.requirements,assumptions:[...context.readiness.assumptions,...newAssumptions],unknowns:[...context.readiness.unknowns,...newUnknowns]},context);
+}
+
 function fail(message){throw Object.assign(new Error(message),{code:'GENERATION_CONTRACT'});}
 /** Small validator for the closed schema vocabulary used here (not arbitrary JSON Schema). */
 export function assertGenerationSchema(value,schema,path='output'){
@@ -87,6 +108,19 @@ export function dependentUnitKeys(units,keys){const result=new Set(keys);let cha
 export function schemaForGenerationUnit(p,u){
   if(u.kind==='metadata')return obj({...p.physicsInputs?{physicsInputs:D.physicsInputs}:{},...p.verificationRequests!==null?{verificationRequests:D.verificationRequests}:{},...p.electrical?.control?{control:E.control}:{}});
   const schemas={part:D.parts.items,assembly:D.assembly.items,buildItem:D.buildItems.items,electricalComponent:E.components.items,connection:E.connections.items};
+  if(u.kind==='part')schemas.part={anyOf:u.ids.map(id=>{
+    const r=p.parts.find(part=>part.id===id);if(!r)fail('unknown planned part');
+    const item=structuredClone(D.parts.items);
+    for(const key of ['id','kind'])item.properties[key]={const:r[key]};
+    for(const key of ['position','rotation'])item.properties[key]={enum:[r[key]]};
+    const shape=item.properties.shape.anyOf.find(s=>s.properties.type.enum.includes(r.identity.type));
+    if(!shape)fail('unknown planned shape');
+    for(const [key,value]of Object.entries(r.identity))shape.properties[key]={const:value};
+    item.properties.shape=shape;
+    if(r.source===null||r.source===undefined)delete item.properties.source;
+    else{item.properties.source={const:r.source};item.required.push('source');}
+    return item;
+  })};
   if(!schemas[u.kind])fail('unknown unit kind');return obj({items:arr(schemas[u.kind],u.ids.length,u.ids.length)});
 }
 export function validateGenerationUnit(p,u,raw,completed){

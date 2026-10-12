@@ -84,6 +84,14 @@ directory containing `data/`), accessible on the machine running the collector.
 Supply a JSON file containing the upstream/user's exact `request`, `answers`
 array and `budget` string. No answers are supplied automatically.
 
+For a production-source benchmark, restore the separate approved catalog into the
+isolated app and pass `--expected-catalog-sha256=<manifest SHA256>` from the intended
+source snapshot. A source-only ZIP has an empty catalog and does not represent a
+production hardware inventory. The collector rejects a mismatched manifest before
+creating a project or running inference, and records the matching hash/count in
+`source-preflight.json`. Changing the source snapshot prevents speed comparisons
+with previous trials even when the user brief is identical.
+
 Set `M4KE_BENCH_COORDINATED=1` only after actual coordination, then invoke:
 
 ```text
@@ -129,3 +137,20 @@ Stage prompts route verbatim sections of the loaded upstream design skill instea
 Actual122B follow-up: context fix allowed two real readiness calls (3613/3618 prompt tokens;1105/1075 output tokens). Both stopped normally but violated status/questions consistency and were rejected. Readiness decoder now uses two discriminated alternatives: ready with zero questions, or questions with1–3 questions. The existing host invariant is retained; no status rewriting, discarded questions or forced pass. A decoder-projection regression reproduces the old mismatch and verifies both valid alternatives and both rejected contradictions.
 
 Actual 122B follow-up after the readiness correction: readiness passed, then two planning calls failed host validation with `output: unsupported key status`. The run finished in 112.2 seconds with three model calls and no accepted design. Inspection found that the later-stage decoder allowed the full readiness schema, including `ready`, although the runner accepts only its assigned payload or a late clarification. Later stages now permit only their stage schema or `questions` with 1–3 questions. Regression coverage exercises both host and Ollama-projected contracts across plan, part, metadata and assembly. This latest correction is source-tested, not yet verified by another real-model run. CAD, connected preview, physical fit and pricing remain NOT_TESTED. PR11 remains draft.
+
+Current generation-quality correction: planning emits only choices and bounded
+newAssumptions/newUnknowns. The host copies exact durable intake text into the
+stored plan. Source identities in the decoder come from the frozen admitted
+catalog/library inventory; electrical profile IDs cannot stand in for native CAD.
+Parts keep exact planned identity, pose and source in their assigned decoder.
+Progress reports measured inference time, while durable budget accounting keeps
+conservative reservations. Planning receives the geometry coordinate convention;
+full feature rules reach later geometry stages. Every distinct source/control fact
+remains in the frozen context.
+
+For same-design native/electrical/assembly observation use `--mode=auto`; the default
+`--mode=design` stops at design generation. Neither a generated plan nor a reported
+CAD artifact establishes visual quality or physical operation. Latest isolated
+Linux source regression:655 passed,20 skipped,0 failures. Actual full-catalog car
+trial v3 stopped after300.8s with rejected fabricated catalog identities, before
+CAD. A bounded retest is pending; this is not a five-minute success benchmark.

@@ -1,6 +1,6 @@
 import {performance} from 'node:perf_hooks';
 import {parseGenerationJson} from './studio-generation-json.mjs';
-import {READINESS_SCHEMA,QUESTIONS_SCHEMA,PLAN_SCHEMA,validateReadiness,validateGenerationPlan,partitionGeneration,schemaForGenerationUnit,validateGenerationUnit,assembleGeneration,dependentUnitKeys} from './studio-generation-stages.mjs';
+import {READINESS_SCHEMA,QUESTIONS_SCHEMA,planProposalSchema,validateReadiness,validateGenerationProposal,partitionGeneration,schemaForGenerationUnit,validateGenerationUnit,assembleGeneration,dependentUnitKeys} from './studio-generation-stages.mjs';
 import {descriptorFor,dependencyHashes,canResumeGeneration} from './studio-generation-checkpoints.mjs';
 
 const special=key=>({key,kind:key,ids:[],dependsOn:[],tokenLimit:key==='readiness'?1500:4000,timeoutMs:key==='readiness'?180000:300000});
@@ -37,7 +37,7 @@ export async function runStagedGeneration({identity,contextSnapshot,store,infer,
     const timeout=AbortSignal.timeout(reservation.timeoutMs),combined=signal?AbortSignal.any([signal,timeout]):timeout,start=performance.now();let settled=false;
     activeTiming={id:reservation.reservationId,start};
     try{
-      await progress(unit.kind,{attempt:3-remainingAttempts(unit.key)});combined.throwIfAborted();
+      await progress(unit.kind,{attempt:(unit.key.includes('~')?1:2)-remainingAttempts(unit.key)});combined.throwIfAborted();
       const response=await infer({unit,schema:unit.key==='readiness'?schema:{anyOf:[schema,QUESTIONS_SCHEMA]},messages,config:{numPredict:unit.tokenLimit,timeoutMs:reservation.timeoutMs,numCtx:65536},signal:combined,onProgress:()=>{}});
       combined.throwIfAborted();
       const outcome=response.doneReason==='length'?'length':'stop';await h.settle(reservation.reservationId,{elapsedMs:performance.now()-start,outcome,evalCount:response.metrics?.evalCount??null,promptEvalCount:response.metrics?.promptEvalCount??null});settled=true;activeTiming=null;
@@ -74,7 +74,7 @@ export async function runStagedGeneration({identity,contextSnapshot,store,infer,
     if(!h.snapshot().readiness)await h.saveReadiness(await validatedRequest(special('readiness'),READINESS_SCHEMA,validateReadiness));
     const ready=h.snapshot().readiness;
     if(ready.status==='questions'){await h.finish('questions');return {status:'questions',spec:questionsSpec(ready),generationId:h.id,metrics:h.remaining()};}
-    if(!h.snapshot().plan)await h.savePlan(await validatedRequest(special('plan'),PLAN_SCHEMA,v=>validateGenerationPlan(v,{readiness:ready,sources:h.context.sources})));
+    if(!h.snapshot().plan)await h.savePlan(await validatedRequest(special('plan'),planProposalSchema(ready,h.context.sources),v=>validateGenerationProposal(v,{readiness:ready,sources:h.context.sources})));
     const units=partitionGeneration(h.snapshot().plan);
     for(;;){
       for(const u of units)await unit(u);

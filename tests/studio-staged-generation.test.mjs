@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {mkdtemp}from'node:fs/promises';import {tmpdir}from'node:os';import path from'node:path';import {randomUUID}from'node:crypto';
 import {createGenerationCheckpointStore,generationIdentity,hashGenerationValue}from'../server/studio-generation-checkpoints.mjs';
-import {runStagedGeneration,measuredGenerationElapsed}from'../server/studio-staged-generation.mjs';import {validateDesignSpec}from'../server/studio-contract.mjs';import {plan,readiness,payload}from'./helpers/staged-generation-fixture.mjs';
+import {runStagedGeneration,measuredGenerationElapsed}from'../server/studio-staged-generation.mjs';import {validateDesignSpec}from'../server/studio-contract.mjs';import {plan,readiness,payload,proposal}from'./helpers/staged-generation-fixture.mjs';
 import {assertGenerationSchema} from '../server/studio-generation-stages.mjs';
 import {ollamaProjection} from '../server/studio-schema.mjs';
 const response=v=>({content:JSON.stringify(v),doneReason:'stop',metrics:{evalCount:1}});
@@ -18,6 +18,8 @@ test('progress never reports the reserved timeout as measured generation time',a
  const c=await setup(1),events=[];c.onProgress=p=>events.push(p);
  const result=await runStagedGeneration(c);
  const first=events.find(p=>p.stage==='readiness'&&p.attempt);
+ assert.equal(first.attempt,1,'First dispatch must be displayed as attempt one');
+ assert.ok(events.filter(p=>p.attempt).every(p=>p.attempt===1));
  assert.ok(first.remaining.activeMs<=2220000,'Timeout must remain reserved in the durable budget');
  assert.ok(first.elapsedMs<10000,'Fresh inference must not claim three minutes already elapsed');
  const saved=await c.store.inspect({projectId:c.identity.identity.projectId,generationId:result.generationId});
@@ -46,7 +48,7 @@ test('later-stage decoder permits its payload or questions, never a ready-only r
  assert.equal((await runStagedGeneration(c)).status,'accepted');
  assert.ok(seen.includes('plan'));assert.ok(seen.includes('part'));assert.ok(seen.includes('metadata'));assert.ok(seen.includes('assembly'));
 });
-async function setup(n=5){const root=await mkdtemp(path.join(tmpdir(),'m4ke-runner-'));const contextSnapshot={sources:{catalogIds:[],libraryHashes:[]}},identity=generationIdentity({projectId:randomUUID(),request:'fixture',answers:[],model:{digest:'a'},skillHash:'b',schemaHash:'c',sourceHash:'d',contextHash:hashGenerationValue(contextSnapshot)}),calls=[],p=plan(n);return {root,identity,contextSnapshot,store:createGenerationCheckpointStore({root}),calls,p,buildMessages:()=>[{role:'system',content:'Fixture upstream skill'}],infer:async({unit})=>{calls.push(unit.key);return response(unit.key==='readiness'?readiness():unit.key==='plan'?p:payload(p,unit));},admit:raw=>({spec:validateDesignSpec(raw),issues:[]})};}
+async function setup(n=5){const root=await mkdtemp(path.join(tmpdir(),'m4ke-runner-'));const contextSnapshot={sources:{catalogIds:[],libraryHashes:[]}},identity=generationIdentity({projectId:randomUUID(),request:'fixture',answers:[],model:{digest:'a'},skillHash:'b',schemaHash:'c',sourceHash:'d',contextHash:hashGenerationValue(contextSnapshot)}),calls=[],p=plan(n);return {root,identity,contextSnapshot,store:createGenerationCheckpointStore({root}),calls,p,buildMessages:()=>[{role:'system',content:'Fixture upstream skill'}],infer:async({unit,messages})=>{calls.push(unit.key);return response(unit.key==='readiness'?readiness():unit.key==='plan'?proposal(p,JSON.parse(messages.at(-1).content).readiness):payload(p,unit));},admit:raw=>({spec:validateDesignSpec(raw),issues:[]})};}
 test('essential questions stop before plan, geometry or admission',async()=>{
  const c=await setup();let admitted=false;c.infer=async({unit})=>{c.calls.push(unit.key);return response({...readiness(),status:'questions',questions:[{id:'battery',question:'Which battery?'}]});};c.admit=()=>{admitted=true;throw Error('must not admit');};
  const result=await runStagedGeneration(c);assert.equal(result.status,'questions');assert.deepEqual(c.calls,['readiness']);assert.equal(admitted,false);assert.deepEqual(result.spec.parts,[]);
