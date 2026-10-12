@@ -1,9 +1,28 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {mkdtemp}from'node:fs/promises';import {tmpdir}from'node:os';import path from'node:path';import {randomUUID}from'node:crypto';
 import {createGenerationCheckpointStore,generationIdentity,hashGenerationValue}from'../server/studio-generation-checkpoints.mjs';
-import {runStagedGeneration}from'../server/studio-staged-generation.mjs';import {validateDesignSpec}from'../server/studio-contract.mjs';import {plan,readiness,payload}from'./helpers/staged-generation-fixture.mjs';
+import {runStagedGeneration,measuredGenerationElapsed}from'../server/studio-staged-generation.mjs';import {validateDesignSpec}from'../server/studio-contract.mjs';import {plan,readiness,payload}from'./helpers/staged-generation-fixture.mjs';
 import {assertGenerationSchema} from '../server/studio-generation-stages.mjs';
 import {ollamaProjection} from '../server/studio-schema.mjs';
 const response=v=>({content:JSON.stringify(v),doneReason:'stop',metrics:{evalCount:1}});
+
+test('live measured time is capped and orphaned reservations never become measurements',()=>{
+ const reservations=[{id:'done',elapsedMs:125,timeoutMs:1000},{id:'live',elapsedMs:null,timeoutMs:300000}];
+ assert.equal(measuredGenerationElapsed(reservations,'live',42),167);
+ assert.equal(measuredGenerationElapsed(reservations,'live',400000),300125);
+ assert.equal(measuredGenerationElapsed(reservations),undefined);
+ assert.equal(measuredGenerationElapsed([...reservations,{id:'orphan',elapsedMs:null,timeoutMs:9000}],'live',42),undefined);
+ assert.equal(reservations[1].elapsedMs,null);
+});
+
+test('progress never reports the reserved timeout as measured generation time',async()=>{
+ const c=await setup(1),events=[];c.onProgress=p=>events.push(p);
+ const result=await runStagedGeneration(c);
+ const first=events.find(p=>p.stage==='readiness'&&p.attempt);
+ assert.ok(first.remaining.activeMs<=2220000,'Timeout must remain reserved in the durable budget');
+ assert.ok(first.elapsedMs<10000,'Fresh inference must not claim three minutes already elapsed');
+ const saved=await c.store.inspect({projectId:c.identity.identity.projectId,generationId:result.generationId});
+ assert.equal(events.at(-1).elapsedMs,saved.state.reservations.reduce((n,r)=>n+r.elapsedMs,0));
+});
 test('later-stage decoder permits its payload or questions, never a ready-only response',async()=>{
  const c=await setup(1),base=c.infer,seen=[];
  c.infer=async args=>{

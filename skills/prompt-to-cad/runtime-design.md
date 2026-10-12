@@ -62,7 +62,7 @@ Transform source-local interface axes/centres into world coordinates and compare
 
 A solid surrounding a purchased part collides; model open pockets/holes/slots or separate retainers and insertion paths. Closed cavities are inaccessible. Battery/PCB cavities need disclosed positive fit allowance and openings; manufacture/fit remain untested. Terminal anchors use component-local centred coordinates near supplied bounds, never world coordinates or fictitious source qualification.
 
-For part colors AND wire colors use literal #RRGGBB hex values from the decoder palette, never color names such as red or black. Keep native references, calculations, wiring and mount access mutually consistent. Host diagnostic feedback can contain several independent issues: correct ALL of them in the same initial-draft retry; do not stop after adding a missing field.
+Part AND wire colors use decoder-palette #RRGGBB literals, never names. Keep native references, calculations, wiring and mount access consistent. Correct ALL initial-draft diagnostics together, not just a missing field.
 
 Follow the complete supplied JSON schema; use the requested object rather than copying a sample toy.
 

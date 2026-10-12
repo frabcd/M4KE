@@ -673,12 +673,12 @@
       "bytes": 9149
     },
     "server/studio-staged-generation.mjs": {
-      "sha256": "bd3e92f2410cee55f71a9d029378128556b47e501c0a01c4a20462768f0d4e90",
-      "bytes": 8327
+      "sha256": "1d1ccf83bc3643a501ac68ad33fe095f0f07cf94d60f11098e2b0de6398fda05",
+      "bytes": 9007
     },
     "server/studio-staged-service.mjs": {
-      "sha256": "f4d6c91d997a9304f29d23f4d54cb64ce060420645237474b8c56b47530e5d45",
-      "bytes": 14714
+      "sha256": "313330769997d573af774bc031ad917fc9957952452e7d639a2a8c56455dd356",
+      "bytes": 14852
     },
     "server/studio-usability.mjs": {
       "sha256": "26af567ba1c7098927aa3f942b4772dce2cf5d734bc842cbec040999026be16f",
@@ -741,8 +741,8 @@
       "bytes": 6211
     },
     "skills/prompt-to-cad/runtime-design.md": {
-      "sha256": "6e390b94c5cffad4fe32625fdbe4c71bdc526105bd28d575fd907d7e3e204ece",
-      "bytes": 30274
+      "sha256": "cc9fad1ee061bc2afab0e7fa986165102b0678a2457abec9c621f5a79d6ac566",
+      "bytes": 30122
     },
     "skills/prompt-to-cad/runtime-library.md": {
       "sha256": "d9e475d60c69ae3fc0f6f430cb92cf373adf768fbb320681eeffb1b49642ddd9",
@@ -1341,8 +1341,8 @@
       "bytes": 8339
     },
     "tests/studio-staged-generation.test.mjs": {
-      "sha256": "eb6cf38a60df14f0cabf624ebfd424561eaa4ae82200d8e22acd6813d8fdd03a",
-      "bytes": 9070
+      "sha256": "c456b2c63894a0c10f2384df22daa108fa30a85bcd292ec124ebf4e8fefc6a42",
+      "bytes": 10362
     },
     "tests/studio-staged-projects.test.mjs": {
       "sha256": "b9760cabf0b8f9a8da558d5cf911c81f9342da004824c2149fbcaf89554db52c",
@@ -1433,8 +1433,8 @@
       "bytes": 11712
     },
     "texting.txt": {
-      "sha256": "56866168bdb52084b20e0455b2810b003e23867a7fa8e974c27b0c4145b18e77",
-      "bytes": 40716
+      "sha256": "34e9cca8f39982ee5caf37d0886593104a64937ba2314ae80d7549185311333c",
+      "bytes": 42783
     },
     "tsconfig.json": {
       "sha256": "5254b6412d77d8bcbcf50652402d4ee45a1379d3335cb3c155367e886961e51c",

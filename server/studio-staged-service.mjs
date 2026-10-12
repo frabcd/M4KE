@@ -48,7 +48,7 @@ export function buildStagedMessages({unit,contextSnapshot,state={}}){
   },scope:'Intake only. Detailed source facts are deferred to planning; this stage does not choose hardware or certify compatibility.'};
  }else{
   data={...original};delete data.candidateReferences;
-  if(kind==='plan')data.stageOutputContract={requiredFields:PLAN_SCHEMA.required,partFields:PLAN_SCHEMA.properties.parts.items.required,assemblyFields:PLAN_SCHEMA.properties.assembly.items.required,identity:'type:box/cylinder/union or catalog+catalogId or library+sourceSha256',nonPowered:'electrical:null; physicsInputs:false; other unused rosters:null. Never omit required fields.'};
+  if(kind==='plan')data.stageOutputContract={requiredFields:PLAN_SCHEMA.required,partFields:PLAN_SCHEMA.properties.parts.items.required,assemblyFields:PLAN_SCHEMA.properties.assembly.items.required,identity:'type:box/cylinder/union or catalog+catalogId or library+sourceSha256',rosters:'buildItems and verificationRequests: null or arrays of ASCII IDs, NOT objects. IDs start with a letter, then only letters/digits/_/-. No spaces.',flags:'physicsInputs:boolean; electrical:null if unpowered. Never omit required fields.'};
   // Deterministic kit compilation is a separate route, not fresh generation.
   if(data.localCatalog){data.localCatalog={...data.localCatalog};delete data.localCatalog.kits;}
   if(kind==='plan'&&data.localCatalog){
