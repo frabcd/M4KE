@@ -13,9 +13,9 @@ import {designHash,validateDesignSpec} from '../server/studio-contract.mjs';
 const sample=()=>({schemaVersion:1,title:'Test shell',description:'An untested shell',units:'mm',requirements:[{id:'R1',text:'Keep the selected dimensions and materials as assumptions'}],assumptions:[],unknowns:['Physical test pending'],questions:[],parts:[{id:'shell',name:'Shell',kind:'printed',material:'PLA',color:'#123456',shape:{type:'box',size:[40,30,4]},position:[0,0,0],rotation:[0,0,0]}],assembly:[{id:'inspect',title:'Inspect',partIds:['shell'],requires:[],instructions:['Measure the part.'],checks:['Compare to the drawing.']}]});
 const candidate=()=>{const s=sample();s.parts[0].shape.size[0]=42;s.parts[0].explanation={purpose:'Protect the mechanism',placementReason:'An assumed two mm clearance is proposed',selectionReason:'PLA is a prototype material, not a certified safety selection'};return s;};
 const requestFor=p=>({expectedRevision:p.revision,designHash:p.designHash,selectedPartIds:['shell']});
-async function storeFixture(assistant){
+async function storeFixture(assistant,options={}){
   const root=await mkdtemp(path.join(tmpdir(),'m4ke-workspace-'));
-  const store=createProjectStore({root,execute:async(_p,_i,save)=>save({workflow:{status:'draft',stage:'refine'}}),assistant});
+  const store=createProjectStore({root,execute:async(_p,_i,save)=>save({workflow:{status:'draft',stage:'refine'}}),assistant,...options});
   return {root,store,close:()=>rm(root,{recursive:true,force:true})};
 }
 
@@ -45,6 +45,41 @@ test('name and separate view version preserve design, project revision, verifica
     assert.equal((await f.store.list())[0].title,'Renamed');
     assert.equal((await f.store.getView(p.id)).hiddenPartIds[0],'shell');
   }finally{await f.close();}
+});
+
+test('cancelled assistant results leave neither conversation nor proposal on disk',async()=>{
+  for(const mode of ['ask','propose'])for(const phase of ['before','response','preparation']){
+    if(mode==='ask'&&phase==='preparation')continue;
+    const controller=new AbortController();let calls=0,prepared=0;
+    const f=await storeFixture(async()=>{calls++;if(phase==='response')controller.abort(new Error('Cancelled assistant fixture'));return {message:'A proposal or explanation',spec:candidate()};},{prepareCandidate:async({spec})=>{prepared++;controller.abort(new Error('Cancelled assistant fixture'));return {spec};}});
+    try{
+      const p=await f.store.create({request:'Shell',spec:sample()});
+      if(phase==='before')controller.abort(new Error('Cancelled assistant fixture'));
+      await assert.rejects(f.store.assist(p.id,{...requestFor(p),mode,message:'Explain or edit'},controller.signal),/Cancelled assistant fixture/);
+      assert.equal(calls,phase==='before'?0:1);assert.equal(prepared,phase==='preparation'?1:0);
+      assert.deepEqual((await f.store.getConversation(p.id)).entries,[]);
+      assert(!(await readdir(path.join(f.root,'data/studio-projects'))).some(n=>n.includes('-proposal-')));
+      assert.deepEqual(await f.store.get(p.id),p);
+    }finally{await f.close();}
+  }
+});
+
+test('answers and clarification from an obsolete brief are rejected before saving dialogue',async()=>{
+  for(const [mode,clarification] of [['ask',true],['propose',true],['propose',false]]){
+    let entered,release;const ready=new Promise(r=>entered=r),gate=new Promise(r=>release=r);
+    let prepared=0;
+    const question={...sample(),parts:[],assembly:[],questions:[{id:'size',question:'Which size?'}]};
+    const f=await storeFixture(async()=>{entered();await gate;return {message:'Based on the old brief',spec:clarification?question:candidate()};},{prepareCandidate:async({spec})=>{prepared++;return {spec};}});
+    try{
+      const p=await f.store.create({request:'Shell',spec:sample()});
+      const pending=f.store.assist(p.id,{...requestFor(p),mode,message:'Explain or edit'});
+      const rejected=assert.rejects(pending,e=>e.status===409);
+      await ready;const updated=await f.store.update(p.id,{expectedRevision:p.revision,request:'Different requirements'});
+      release();await rejected;
+      assert.equal(prepared,0,'An obsolete proposal must not start native preparation');
+      assert.deepEqual((await f.store.getConversation(p.id)).entries,[]);assert.deepEqual(await f.store.get(p.id),updated);
+    }finally{release();await f.close();}
+  }
 });
 
 test('assistant receives frozen server-resolved context; asking never mutates the project',async()=>{

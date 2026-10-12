@@ -529,8 +529,8 @@
       "bytes": 19292
     },
     "server/studio-architecture-plan.mjs": {
-      "sha256": "68faf1df2dfd7912c76089d503ff27d1491f7e4ae4adab099e89760596c33b2f",
-      "bytes": 16222
+      "sha256": "a8b71c5fc6a3a0e1602de1ce7cf10ecae2e58cf5be0d2c43ac01bb23e934503c",
+      "bytes": 17137
     },
     "server/studio-candidate-context.mjs": {
       "sha256": "f770e9bcdff17713450adcf7d83ea7aed55ed55690e62678a725b05d8fe95867",
@@ -617,12 +617,12 @@
       "bytes": 5789
     },
     "server/studio-projects.mjs": {
-      "sha256": "22e0f442a15cdbd2bd78494276a86e7376d0c6b401407fb1701dee669361e5dd",
-      "bytes": 27296
+      "sha256": "6c5f9b0e4596b4d8fa3c6d5f8c2a77df62801ca52fb5fbd452b5901f774cd02f",
+      "bytes": 27851
     },
     "server/studio-refinement.mjs": {
-      "sha256": "c7d11df806dbd7568113b455cb996c257cb9036daacc2b8b84d4f869f753d27a",
-      "bytes": 11308
+      "sha256": "284946d4897c0105f8a74ed61c7b9928cb858a5a7dc55d09b873b63a365a3907",
+      "bytes": 12209
     },
     "server/studio-repair.mjs": {
       "sha256": "8685c3b37d8a74b39154f4dca14d486bc076ba06ea43aa71e44be828b8eb6f90",
@@ -641,8 +641,8 @@
       "bytes": 8809
     },
     "server/studio-service.mjs": {
-      "sha256": "d858cea3376d3ef57abf61951b3cd1a11405f0406409e382344474dd1cde035e",
-      "bytes": 86051
+      "sha256": "8b22bf8511b845491a2de0bba63700d6bc604e54fad0d58086bb4208b7c8cc50",
+      "bytes": 86722
     },
     "server/studio-skills.mjs": {
       "sha256": "beee1bf73351a6ddb4624ffd2548654b4ea22c9d461108b0146f7262b286f036",
@@ -1141,8 +1141,8 @@
       "bytes": 5116
     },
     "tests/studio-architecture-plan.test.mjs": {
-      "sha256": "1a83eb31b8e9432f6681353e01440fe7d19195a3e3666bb1c4b1ff564c867ab7",
-      "bytes": 15828
+      "sha256": "0172bf7eabffb5bb3bf1129c8810bbcc80f02e28aad3bf8d7c882e63dc175db8",
+      "bytes": 17834
     },
     "tests/studio-candidate-context.test.mjs": {
       "sha256": "56adf27f2b8cc7565df3180b39cacbb46911f14c557f2c848a34f27e26cf7773",
@@ -1245,8 +1245,8 @@
       "bytes": 5656
     },
     "tests/studio-refinement.test.mjs": {
-      "sha256": "432726b71ca698d739ea1bc049c85a8542b5c38f95e3b242a7e870749e9368f1",
-      "bytes": 9291
+      "sha256": "45c09a4563ca48086f46563c394eec408b846300abd0def36405a4945f4d186a",
+      "bytes": 14087
     },
     "tests/studio-repair-execution.test.mjs": {
       "sha256": "8eb6d8a43ce97980909831d5b07c6f413e80882573b00674c7f26a6bceee30db",
@@ -1261,8 +1261,8 @@
       "bytes": 14470
     },
     "tests/studio-service.test.mjs": {
-      "sha256": "2c6ada9c350c0069890d4704ac62d7aaae2e7850d384014a427113d4c75d0187",
-      "bytes": 23545
+      "sha256": "f73c58888d01005b1d867dc671e089dd62816ca0bef5cddad7e146ef30e60062",
+      "bytes": 24478
     },
     "tests/studio-shell-e2e.mjs": {
       "sha256": "6608897d1ae12c0871dd9519c0ccd3238221cf1d97c55859fa8afce5126cad58",
@@ -1293,8 +1293,8 @@
       "bytes": 1429
     },
     "tests/studio-workspace.test.mjs": {
-      "sha256": "fea44025efbb144da359d803e002244fbdbcd63738e06e46aa63fd51f13bee88",
-      "bytes": 49628
+      "sha256": "2ce6b4164e13afd94b7477989f6480eed895f5a707f78d45f868d10e94a7bc76",
+      "bytes": 52227
     },
     "tests/submission_package_test.py": {
       "sha256": "726ed72e211decca2e1c32f98c704136323a5ae65ae078c2079bd58ad55230b2",
@@ -1349,8 +1349,8 @@
       "bytes": 11712
     },
     "texting.txt": {
-      "sha256": "cd6fede4a25661107ae108b2ea6af6752966a1fe465118927e196c9306ab0c62",
-      "bytes": 25916
+      "sha256": "d18b0a25f1e529eb3359d8d488cde92fa9eadc0ea7af93de72a458fccd6a97a3",
+      "bytes": 29956
     },
     "tsconfig.json": {
       "sha256": "5254b6412d77d8bcbcf50652402d4ee45a1379d3335cb3c155367e886961e51c",

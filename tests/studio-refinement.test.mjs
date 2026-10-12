@@ -86,6 +86,62 @@ test('bounded retry keeps failed model patch, exact parent and accepted full has
   }finally{await rm(root,{recursive:true,force:true});}
 });
 
+test('compact refinement recovers truncation with context headroom and retains unchanged parent geometry',async()=>{
+  const root=await mkdtemp(path.join(tmpdir(),'m4ke-refinement-budget-')),spec=sample(),calls=[];
+  try{
+    const result=await generateRefinement({root,project:{id:'fixture',revision:1,request:'Shell',spec},context:{selectedPartIds:['shell']},message:'Blue',history:[],settings:{endpoint:'http://127.0.0.1:11434',model:'fixture'},installed:{digest:'fixture'},skills:{refine:'Contract',hashes:{refine:'fixture'}},inspect:()=>[],infer:async(_url,_route,opts,timeout)=>{
+      calls.push({payload:JSON.parse(opts.body),timeout});return {message:{content:JSON.stringify(patch())},done_reason:calls.length===1?'length':'stop',prompt_eval_count:28000};
+    }});
+    assert.deepEqual(calls.map(c=>c.payload.options.num_predict),[3000,3744]);
+    assert.deepEqual(calls.map(c=>c.timeout),[240000,480000]);
+    assert.deepEqual(calls[1].payload.format,calls[0].payload.format);
+    assert.deepEqual(result.spec.parts[0].shape,spec.parts[0].shape);
+    assert.deepEqual(result.spec.verificationRequests,spec.verificationRequests);
+    const record=JSON.parse(await readFile(path.join(root,'data/design-runs',result.metrics.runId+'.json'),'utf8'));
+    assert.deepEqual(record.attempts.map(a=>a.inferenceConfig.num_predict),[3000,3744]);
+    assert.equal(record.attempts[0].promptEvalCount,28000);assert.equal(record.parentDesignHash,designHash(spec));
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('cancelled compact edits never invoke another request or become accepted candidates',async()=>{
+  for(const preCancelled of [true,false]){
+    const root=await mkdtemp(path.join(tmpdir(),'m4ke-refinement-cancel-')),controller=new AbortController();let calls=0;
+    if(preCancelled)controller.abort(new Error('Cancelled fixture'));
+    try{
+      await assert.rejects(generateRefinement({root,project:{id:'fixture',revision:1,request:'Shell',spec:sample()},context:{selectedPartIds:['shell']},message:'Blue',history:[],settings:{endpoint:'http://127.0.0.1:11434',model:'fixture'},installed:{digest:'fixture'},skills:{refine:'Contract',hashes:{refine:'fixture'}},signal:controller.signal,inspect:()=>[],infer:async()=>{
+        calls++;controller.abort(new Error('Cancelled fixture'));return {message:{content:JSON.stringify(patch())},done_reason:'stop'};
+      }}),/Cancelled fixture/);
+      assert.equal(calls,preCancelled?0:1);
+      const files=await readdir(path.join(root,'data/design-runs'));
+      const record=JSON.parse(await readFile(path.join(root,'data/design-runs',files.find(n=>n.endsWith('.json'))),'utf8'));
+      assert.equal(record.status,'rejected');assert.equal(record.cancelled,true);assert.equal(record.designHash,null);
+    }finally{await rm(root,{recursive:true,force:true});}
+  }
+});
+
+test('compact edit with exhausted context stops instead of repeating the same token limit',async()=>{
+  const root=await mkdtemp(path.join(tmpdir(),'m4ke-refinement-no-context-'));let calls=0;
+  try{
+    await assert.rejects(generateRefinement({root,project:{id:'fixture',revision:1,request:'Shell',spec:sample()},context:{selectedPartIds:['shell']},message:'Blue',history:[],settings:{endpoint:'http://127.0.0.1:11434',model:'fixture'},installed:{digest:'fixture'},skills:{refine:'Contract',hashes:{refine:'fixture'}},inspect:()=>[],infer:async()=>{
+      calls++;return {message:{content:JSON.stringify(patch())},done_reason:'length',prompt_eval_count:30000};
+    }}),/No further token-limit retry/);
+    assert.equal(calls,1);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('cancellation during asynchronous edit validation leaves no accepted design hash',async()=>{
+  const root=await mkdtemp(path.join(tmpdir(),'m4ke-refinement-inspect-cancel-')),controller=new AbortController();let calls=0;
+  try{
+    await assert.rejects(generateRefinement({root,project:{id:'fixture',revision:1,request:'Shell',spec:sample()},context:{selectedPartIds:['shell']},message:'Blue',history:[],settings:{endpoint:'http://127.0.0.1:11434',model:'fixture'},installed:{digest:'fixture'},skills:{refine:'Contract',hashes:{refine:'fixture'}},signal:controller.signal,inspect:async()=>{controller.abort(new Error('Cancelled validation fixture'));return [];},infer:async()=>{
+      calls++;return {message:{content:JSON.stringify(patch())},done_reason:'stop'};
+    }}),/Cancelled validation fixture/);
+    assert.equal(calls,1);
+    const files=await readdir(path.join(root,'data/design-runs'));
+    const record=JSON.parse(await readFile(path.join(root,'data/design-runs',files.find(n=>n.endsWith('.json'))),'utf8'));
+    assert.equal(record.status,'rejected');assert.equal(record.designHash,null);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('truncated model responses and new deterministic failures never become candidates',async()=>{
   for(const truncated of [true,false]){
     const root=await mkdtemp(path.join(tmpdir(),'m4ke-refinement-reject-'));let count=0;
