@@ -123,3 +123,5 @@ pricing follows admission through the existing connection. If the benchmark lose
 its start response, workflow ownership is unknown: report the observed status,
 leave stop unconfirmed, and request operator follow-up instead of cancelling an
 unidentified workflow. Actual performance acceptance remains pending.
+
+Stage prompts route verbatim sections of the loaded upstream design skill instead of resending the entire monolithic design prompt. Intake receives capability identities; planning receives admitted source inventory; later units receive exact selected source records. All original data and stage rules remain in the hash-bound checkpoint, and changed routing invalidates resume identity. New upstream headings are retained by default. The conservative context guard still stops oversized stages explicitly; this is not a guarantee that every large request fits. Held candidate references and deterministic kit options are outside fresh staged generation.

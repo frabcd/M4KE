@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "publicationApproved": true,
+  "publicationApproved": false,
   "licenseApproved": true,
   "originalCodeLicense": "MIT",
-  "scope": "Owner-approved public source release; includes hash-pinned numerical interface metadata, not model weights, native supplier CAD, user data or deployed settings. No third-party redistribution rights or physical-fit claim.",
+  "scope": "Private source-review staging; includes hash-pinned numerical interface metadata, not model weights, native supplier CAD, user data or deployed settings. No third-party redistribution rights or physical-fit claim.",
   "projections": [
     "UTF-8 source text is canonicalized to LF to match Git; private working history is excluded.",
     "Staged .gitignore adds private setup/source-asset exclusions without changing working .gitignore.",
@@ -197,8 +197,8 @@
       "bytes": 9115
     },
     "docs/resumable-generation.md": {
-      "sha256": "1b0cc59d13b4e7ca2f6e845ec5eb8db409c6582d2395ed36119b2a1cbe1093c6",
-      "bytes": 7648
+      "sha256": "9ceca9e1a79ee187887181097b10ecf2deb4ca2b5cb27a6ae220aced3fc25edf",
+      "bytes": 8303
     },
     "docs/skill-integration-handoff.md": {
       "sha256": "6a5cc06c55460ffa1fbd0c8fdd34e97c368763dd3e3874a084e2b9725a294614",
@@ -673,12 +673,12 @@
       "bytes": 8350
     },
     "server/studio-staged-generation.mjs": {
-      "sha256": "35ad3d8591c71e3fdfd96938376840d1a105ebdc46cf22c77fb04b9464c59849",
-      "bytes": 8304
+      "sha256": "6da0e973cab3cbc16e0547dc440bc055b0ceae51d1e433c4519190c5a95e98b3",
+      "bytes": 8310
     },
     "server/studio-staged-service.mjs": {
-      "sha256": "8d52dc2433e02ae5cea9fdcdaa54d661eaf97f9a02b015f35db9376019d52958",
-      "bytes": 7768
+      "sha256": "4998c012b421197a375526fdb9cd3618e349ad798d7f305a3255740511ccd3ff",
+      "bytes": 12293
     },
     "server/studio-usability.mjs": {
       "sha256": "26af567ba1c7098927aa3f942b4772dce2cf5d734bc842cbec040999026be16f",
@@ -1331,6 +1331,10 @@
     "tests/studio-shell-e2e.mjs": {
       "sha256": "110c2604ff3ae15fb26b18d7f29403de121b1f82f1f4f6add781448848f499c4",
       "bytes": 50827
+    },
+    "tests/studio-staged-context.test.mjs": {
+      "sha256": "d1874811283a1102dce61ae71402cd9909dec97d776e2153798431d22ec81f6d",
+      "bytes": 3185
     },
     "tests/studio-staged-generation.test.mjs": {
       "sha256": "c56ba473bc612f84a015644cd409a09067af33b9125494733666303cc3b1392c",
