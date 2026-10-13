@@ -52,3 +52,13 @@ Inspection of the saved, unaccepted units found five cylinders, all with positio
 All three runs used the same request and model digest. Workers stopped at each terminal result; 49 monitored shared files remained unchanged, and the owned test port closed. The shared coordination file contains the exact failure evidence and asks the upstream owner to correct shape/pose selection and delegated-choice handling. No hand-authored benchmark geometry, relaxed checks, shared deployment or teammate-source edits were used.
 
 Scope conclusion: the new decoder constraints resolve the observed electrical/version contract holes; the original quality goal remains unmet. Physical fit/strength/printing and native/visual acceptance remain NOT_TESTED. A subsequent upstream change needs a new version-pinned test; these receipts must not be presented as a pass.
+
+## Empty metadata orchestration follow-up
+
+The third run requested inference for a closed metadata schema with no properties. Its only valid payload was `{}`, but the model spent 36,269.77 ms returning unnecessary preference questions. Read-only replay of the saved plan and units confirmed that the normal metadata validator accepts `{}`. This replay does not modify or accept the original failed generation.
+
+The runner now validates and checkpoints that sole payload locally, retaining dependency hashes, cancellation handling, repair invalidation and final admission. It reserves no inference budget for this deterministic stage. Metadata with any requested fields still calls the model; required clarification remains supported. No geometry or product-design choices are supplied by this shortcut.
+
+Regression evidence: before the fix, the new empty-stage test returned `questions` instead of `accepted`; after the fix, all 16 runner tests passed. A nonempty metadata regression verifies that essential questions still stop generation. Full clean source suite: 682 passed, 21 skipped, zero failures/cancellations. Independent static review found no important issue. Windows sandbox atomic-rename restrictions required running checkpoint tests with normal filesystem access.
+
+PR15 remained at 374e828 with no new response at the follow-up check. No additional DGX inference, shared source edits or deployment occurred for this patch. The five overlapping cylinders and missing recognizable airplane remain an upstream design failure; this patch only removes an unnecessary orchestration call. Native/visual acceptance and physical qualification remain unproven.
