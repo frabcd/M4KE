@@ -1,0 +1,1030 @@
+{
+  "sourceCommit": "67f1826225d663fbe8eed91100bef79cd31fe022",
+  "model": "qwen3.5:122b-a10b",
+  "modelDigest": "8b9d11d807c57feb1e2ecb0d6cbf40334c37dcc3523bed5540af4f927f112a37",
+  "startedUtc": "2026-10-13T12:16:49.285601+00:00",
+  "finishedUtc": "2026-10-13T12:28:19.938581+00:00",
+  "deadlineUtc": "2026-10-13T12:56:49.285601+00:00",
+  "evidenceArchiveSha256": "0503f1514d31f0b890abac9ef9a2badcf54c4efa08cd867d4b2e4505a88959f0",
+  "arms": [
+    {
+      "id": "direct-contract",
+      "status": "failed",
+      "generationElapsedSeconds": 145.006,
+      "error": "HTTP 502: {\"error\":\"parts[0].shape.sections[0].z: finite bounded number required\",\"code\":\"LOCAL_SERVICE_ERROR\"}",
+      "inference": {
+        "model": "qwen3.5:122b-a10b",
+        "done": true,
+        "done_reason": "stop",
+        "total_duration": 145003446469,
+        "load_duration": 13312302470,
+        "prompt_eval_count": 4548,
+        "prompt_eval_duration": 5398190000,
+        "eval_count": 3737,
+        "eval_duration": 126268705000
+      }
+    },
+    {
+      "id": "guided-single",
+      "status": "completed",
+      "generationElapsedSeconds": 182.903,
+      "initial": {
+        "jobId": "75138087-a93d-4411-a34f-5ab46b9970fc",
+        "status": "complete",
+        "designHash": "a587a50d802e46b462d25920b6cfa36b62cbd93bd1a8f27c9aad5df1ecf0e52b",
+        "verification": "FAILED",
+        "nativeElapsedSeconds": 10.878,
+        "criticalFailures": [
+          {
+            "id": "cad-solids",
+            "label": "Current-revision CAD kernel result",
+            "status": "FAIL",
+            "critical": true,
+            "method": "CAD worker errors, validity, volume, solid count and exact part-ID coverage",
+            "observed": "11/11 part records; exact coverage true; valid true; worker errors: [\"assembly:overlaps: Assembly solid intersections failed\"]",
+            "required": "No worker errors; one printed solid; purchased catalog components may contain multiple positive solids",
+            "details": "Catalog source geometry is hash-bound but not physical fit certification. Other purchased geometry remains an envelope."
+          },
+          {
+            "id": "kernel-assembly:overlaps",
+            "label": "Assembly solid intersections",
+            "status": "FAIL",
+            "critical": true,
+            "method": "Open CASCADE exact pair intersections after AABB rejection",
+            "observed": [
+              {
+                "parts": [
+                  "fuselage",
+                  "wings"
+                ],
+                "volumeMm3": 3457.2981323124045,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -15,
+                    -10.00000000000002,
+                    4.816528759658667
+                  ],
+                  "max": [
+                    15,
+                    10.000000000000025,
+                    15.183471240341333
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "fuselage",
+                  "tail_vertical"
+                ],
+                "volumeMm3": 7285.05391484652,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -5.000000000000012,
+                    -15,
+                    45
+                  ],
+                  "max": [
+                    5.000000000000008,
+                    15,
+                    75
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "fuselage",
+                  "tail_horizontal"
+                ],
+                "volumeMm3": 2152.375824353666,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -15,
+                    -7.500000000000007,
+                    52.5
+                  ],
+                  "max": [
+                    15,
+                    7.500000000000005,
+                    57.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "fuselage",
+                  "propeller_hub"
+                ],
+                "volumeMm3": 196.34954084936206,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -5,
+                    -5,
+                    87.5
+                  ],
+                  "max": [
+                    5,
+                    5,
+                    90
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "wings",
+                  "gear_right"
+                ],
+                "volumeMm3": 4.127807166018439,
+                "intersectionBoundsMm": {
+                  "min": [
+                    28.137687439274018,
+                    -2,
+                    1.8189700876147583
+                  ],
+                  "max": [
+                    32,
+                    2,
+                    2.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "tail_vertical",
+                  "tail_horizontal"
+                ],
+                "volumeMm3": 750,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -5,
+                    -7.5,
+                    52.5
+                  ],
+                  "max": [
+                    5,
+                    7.5,
+                    57.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "propeller_hub",
+                  "propeller_blade_left"
+                ],
+                "volumeMm3": 47.83057387452591,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -5,
+                    -2.500000000000002,
+                    91.5
+                  ],
+                  "max": [
+                    5,
+                    2.5000000000000018,
+                    92.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "propeller_hub",
+                  "propeller_blade_right"
+                ],
+                "volumeMm3": 47.83057387452591,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -5,
+                    -2.500000000000002,
+                    91.5
+                  ],
+                  "max": [
+                    5,
+                    2.5000000000000018,
+                    92.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "propeller_blade_left",
+                  "propeller_blade_right"
+                ],
+                "volumeMm3": 399.9999999999999,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -20,
+                    -2.5,
+                    91.5
+                  ],
+                  "max": [
+                    20,
+                    2.5,
+                    93.5
+                  ]
+                }
+              }
+            ],
+            "required": "Separate parts must have no positive-volume intersections above 1e-5 mm3",
+            "details": "This rigid-solid grammar has no validated interference-fit or deformable mating model. Overlap is a blocking nominal-geometry failure, not excused by prose. Unions fuse only members of one printed part; clearance, retention and motion still require separate checks."
+          }
+        ]
+      },
+      "repair": {
+        "jobId": "85ff6e22-a3a4-4a80-8231-1ed31a6d8cb3",
+        "status": "complete",
+        "designHash": "3651775e1085520eccb06ef42b981409e594d7f7862a60596144d3aef66f9cd0",
+        "verification": "FAILED",
+        "nativeElapsedSeconds": 10.031,
+        "criticalFailures": [
+          {
+            "id": "cad-solids",
+            "label": "Current-revision CAD kernel result",
+            "status": "FAIL",
+            "critical": true,
+            "method": "CAD worker errors, validity, volume, solid count and exact part-ID coverage",
+            "observed": "11/11 part records; exact coverage true; valid true; worker errors: [\"assembly:overlaps: Assembly solid intersections failed\"]",
+            "required": "No worker errors; one printed solid; purchased catalog components may contain multiple positive solids",
+            "details": "Catalog source geometry is hash-bound but not physical fit certification. Other purchased geometry remains an envelope."
+          },
+          {
+            "id": "kernel-assembly:overlaps",
+            "label": "Assembly solid intersections",
+            "status": "FAIL",
+            "critical": true,
+            "method": "Open CASCADE exact pair intersections after AABB rejection",
+            "observed": [
+              {
+                "parts": [
+                  "fuselage",
+                  "wings"
+                ],
+                "volumeMm3": 3457.298132314456,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -15,
+                    -10.00000000000002,
+                    9.816528759658667
+                  ],
+                  "max": [
+                    15,
+                    10.000000000000025,
+                    20.183471240341333
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "fuselage",
+                  "tail_vertical"
+                ],
+                "volumeMm3": 4783.05738745259,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -5.000000000000012,
+                    -10,
+                    65
+                  ],
+                  "max": [
+                    5,
+                    10,
+                    90
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "fuselage",
+                  "tail_horizontal"
+                ],
+                "volumeMm3": 1344.1404498060917,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -10,
+                    -7.500000000000004,
+                    72.5
+                  ],
+                  "max": [
+                    10,
+                    7.5000000000000036,
+                    77.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "wings",
+                  "gear_right"
+                ],
+                "volumeMm3": 4.127807166018466,
+                "intersectionBoundsMm": {
+                  "min": [
+                    28.137687439274018,
+                    -2,
+                    6.818970087614758
+                  ],
+                  "max": [
+                    32,
+                    2,
+                    7.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "tail_vertical",
+                  "tail_horizontal"
+                ],
+                "volumeMm3": 750,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -5,
+                    -7.5,
+                    72.5
+                  ],
+                  "max": [
+                    5,
+                    7.5,
+                    77.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "tail_vertical",
+                  "propeller_hub"
+                ],
+                "volumeMm3": 196.34954084936209,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -5,
+                    -5,
+                    92.5
+                  ],
+                  "max": [
+                    5,
+                    5,
+                    95
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "propeller_hub",
+                  "propeller_blade_left"
+                ],
+                "volumeMm3": 47.83057387452591,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -5,
+                    -2.500000000000002,
+                    96.5
+                  ],
+                  "max": [
+                    5,
+                    2.5000000000000018,
+                    97.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "propeller_hub",
+                  "propeller_blade_right"
+                ],
+                "volumeMm3": 47.83057387452591,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -5,
+                    -2.500000000000002,
+                    96.5
+                  ],
+                  "max": [
+                    5,
+                    2.5000000000000018,
+                    97.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "propeller_blade_left",
+                  "propeller_blade_right"
+                ],
+                "volumeMm3": 399.9999999999999,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -20,
+                    -2.5,
+                    96.5
+                  ],
+                  "max": [
+                    20,
+                    2.5,
+                    98.5
+                  ]
+                }
+              }
+            ],
+            "required": "Separate parts must have no positive-volume intersections above 1e-5 mm3",
+            "details": "This rigid-solid grammar has no validated interference-fit or deformable mating model. Overlap is a blocking nominal-geometry failure, not excused by prose. Unions fuse only members of one printed part; clearance, retention and motion still require separate checks."
+          }
+        ]
+      },
+      "inference": {
+        "model": "qwen3.5:122b-a10b",
+        "done": true,
+        "done_reason": "stop",
+        "total_duration": 182899831222,
+        "load_duration": 2321350,
+        "prompt_eval_count": 12376,
+        "prompt_eval_duration": 14046224000,
+        "eval_count": 4806,
+        "eval_duration": 168599898000
+      }
+    },
+    {
+      "id": "staged",
+      "status": "completed",
+      "generationElapsedSeconds": 225.989,
+      "initial": {
+        "jobId": "7dae4bbf-b6b9-42c6-8c32-51918d6e199f",
+        "status": "complete",
+        "designHash": "23ea9bd0e3ca0fecceeac4235c2cd2bb5b8cea1ee4c23b5e4c4f5a535cdd37be",
+        "verification": "FAILED",
+        "nativeElapsedSeconds": 8.96,
+        "criticalFailures": [
+          {
+            "id": "cad-solids",
+            "label": "Current-revision CAD kernel result",
+            "status": "FAIL",
+            "critical": true,
+            "method": "CAD worker errors, validity, volume, solid count and exact part-ID coverage",
+            "observed": "6/6 part records; exact coverage true; valid true; worker errors: [\"assembly:overlaps: Assembly solid intersections failed\"]",
+            "required": "No worker errors; one printed solid; purchased catalog components may contain multiple positive solids",
+            "details": "Catalog source geometry is hash-bound but not physical fit certification. Other purchased geometry remains an envelope."
+          },
+          {
+            "id": "kernel-assembly:overlaps",
+            "label": "Assembly solid intersections",
+            "status": "FAIL",
+            "critical": true,
+            "method": "Open CASCADE exact pair intersections after AABB rejection",
+            "observed": [
+              {
+                "parts": [
+                  "fuselage_main",
+                  "wings_main"
+                ],
+                "volumeMm3": 1004.8510093494873,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -7.5000000000000036,
+                    -1.5
+                  ],
+                  "max": [
+                    12,
+                    7.500000000000003,
+                    1.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "fuselage_main",
+                  "tail_assembly"
+                ],
+                "volumeMm3": 2266.5305427393037,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -12,
+                    -10
+                  ],
+                  "max": [
+                    12,
+                    12,
+                    10
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "fuselage_main",
+                  "engine_left"
+                ],
+                "volumeMm3": 15833.62697409256,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -12,
+                    -17.5
+                  ],
+                  "max": [
+                    12,
+                    12,
+                    17.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "fuselage_main",
+                  "engine_right"
+                ],
+                "volumeMm3": 15833.62697409256,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -12,
+                    -17.5
+                  ],
+                  "max": [
+                    12,
+                    12,
+                    17.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "fuselage_main",
+                  "landing_gear_bay"
+                ],
+                "volumeMm3": 2679.6026915986326,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -7.5000000000000036,
+                    -4
+                  ],
+                  "max": [
+                    12,
+                    7.500000000000003,
+                    4
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "wings_main",
+                  "tail_assembly"
+                ],
+                "volumeMm3": 648,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -15,
+                    -7.5,
+                    -1.5
+                  ],
+                  "max": [
+                    15,
+                    7.5,
+                    1.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "wings_main",
+                  "engine_left"
+                ],
+                "volumeMm3": 1004.8510093494874,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -7.5000000000000036,
+                    -1.5
+                  ],
+                  "max": [
+                    12,
+                    7.500000000000003,
+                    1.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "wings_main",
+                  "engine_right"
+                ],
+                "volumeMm3": 1004.8510093494874,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -7.5000000000000036,
+                    -1.5
+                  ],
+                  "max": [
+                    12,
+                    7.500000000000003,
+                    1.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "wings_main",
+                  "landing_gear_bay"
+                ],
+                "volumeMm3": 1800,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -20,
+                    -7.5,
+                    -1.5
+                  ],
+                  "max": [
+                    20,
+                    7.5,
+                    1.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "tail_assembly",
+                  "engine_left"
+                ],
+                "volumeMm3": 2266.5305427393037,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -12,
+                    -10
+                  ],
+                  "max": [
+                    12,
+                    12,
+                    10
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "tail_assembly",
+                  "engine_right"
+                ],
+                "volumeMm3": 2266.5305427393037,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -12,
+                    -10
+                  ],
+                  "max": [
+                    12,
+                    12,
+                    10
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "tail_assembly",
+                  "landing_gear_bay"
+                ],
+                "volumeMm3": 948,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -15,
+                    -7.5,
+                    -4
+                  ],
+                  "max": [
+                    15,
+                    7.5,
+                    4
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "engine_left",
+                  "engine_right"
+                ],
+                "volumeMm3": 15833.62697409256,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -12,
+                    -17.5
+                  ],
+                  "max": [
+                    12,
+                    12,
+                    17.5
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "engine_left",
+                  "landing_gear_bay"
+                ],
+                "volumeMm3": 2679.6026915986326,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -7.5000000000000036,
+                    -4
+                  ],
+                  "max": [
+                    12,
+                    7.500000000000003,
+                    4
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "engine_right",
+                  "landing_gear_bay"
+                ],
+                "volumeMm3": 2679.6026915986326,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -7.5000000000000036,
+                    -4
+                  ],
+                  "max": [
+                    12,
+                    7.500000000000003,
+                    4
+                  ]
+                }
+              }
+            ],
+            "required": "Separate parts must have no positive-volume intersections above 1e-5 mm3",
+            "details": "This rigid-solid grammar has no validated interference-fit or deformable mating model. Overlap is a blocking nominal-geometry failure, not excused by prose. Unions fuse only members of one printed part; clearance, retention and motion still require separate checks."
+          }
+        ]
+      },
+      "repair": {
+        "jobId": "8028077a-d8d1-426c-8644-eb1c131f84fb",
+        "status": "complete",
+        "designHash": "3c23c0717b3bbe584520931ada101debb5795ca1ed3627a43a34cc8bab4380e0",
+        "verification": "FAILED",
+        "nativeElapsedSeconds": 8.938,
+        "criticalFailures": [
+          {
+            "id": "cad-solids",
+            "label": "Current-revision CAD kernel result",
+            "status": "FAIL",
+            "critical": true,
+            "method": "CAD worker errors, validity, volume, solid count and exact part-ID coverage",
+            "observed": "6/6 part records; exact coverage true; valid true; worker errors: [\"assembly:overlaps: Assembly solid intersections failed\"]",
+            "required": "No worker errors; one printed solid; purchased catalog components may contain multiple positive solids",
+            "details": "Catalog source geometry is hash-bound but not physical fit certification. Other purchased geometry remains an envelope."
+          },
+          {
+            "id": "kernel-assembly:overlaps",
+            "label": "Assembly solid intersections",
+            "status": "FAIL",
+            "critical": true,
+            "method": "Open CASCADE exact pair intersections after AABB rejection",
+            "observed": [
+              {
+                "parts": [
+                  "fuselage_main",
+                  "wings_main"
+                ],
+                "volumeMm3": 1004.8510093494873,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -7.5000000000000036,
+                    0
+                  ],
+                  "max": [
+                    12,
+                    7.500000000000003,
+                    3
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "fuselage_main",
+                  "tail_assembly"
+                ],
+                "volumeMm3": 2266.5305427393037,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -12,
+                    0
+                  ],
+                  "max": [
+                    12,
+                    12,
+                    20
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "fuselage_main",
+                  "landing_gear_bay"
+                ],
+                "volumeMm3": 2679.6026915986326,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -12,
+                    -7.5000000000000036,
+                    -8
+                  ],
+                  "max": [
+                    12,
+                    7.500000000000003,
+                    0
+                  ]
+                }
+              },
+              {
+                "parts": [
+                  "wings_main",
+                  "tail_assembly"
+                ],
+                "volumeMm3": 180,
+                "intersectionBoundsMm": {
+                  "min": [
+                    -2,
+                    -7.5,
+                    0
+                  ],
+                  "max": [
+                    2,
+                    7.5,
+                    3
+                  ]
+                }
+              }
+            ],
+            "required": "Separate parts must have no positive-volume intersections above 1e-5 mm3",
+            "details": "This rigid-solid grammar has no validated interference-fit or deformable mating model. Overlap is a blocking nominal-geometry failure, not excused by prose. Unions fuse only members of one printed part; clearance, retention and motion still require separate checks."
+          }
+        ]
+      },
+      "stagedCalls": [
+        {
+          "id": "fdc6029c-5832-4fa1-948c-8693520ae5ef",
+          "unitKey": "readiness",
+          "round": 0,
+          "tokenLimit": 1500,
+          "timeoutMs": 180000,
+          "elapsedMs": 17548.807824000018,
+          "outcome": "stop",
+          "evalCount": 401,
+          "promptEvalCount": 3049
+        },
+        {
+          "id": "5fcd2091-37d5-42da-a500-f3048a2f09dc",
+          "unitKey": "plan",
+          "round": 0,
+          "tokenLimit": 5000,
+          "timeoutMs": 300000,
+          "elapsedMs": 50669.56447099999,
+          "outcome": "stop",
+          "evalCount": 1229,
+          "promptEvalCount": 7308
+        },
+        {
+          "id": "67db0a20-46d2-403a-aca7-aa7db174f4f0",
+          "unitKey": "part-0",
+          "round": 0,
+          "tokenLimit": 3000,
+          "timeoutMs": 240000,
+          "elapsedMs": 48408.22363600001,
+          "outcome": "stop",
+          "evalCount": 1149,
+          "promptEvalCount": 7488
+        },
+        {
+          "id": "89d313ec-837a-4392-91b0-614171de7597",
+          "unitKey": "part-1",
+          "round": 0,
+          "tokenLimit": 3000,
+          "timeoutMs": 240000,
+          "elapsedMs": 30187.825752999983,
+          "outcome": "stop",
+          "evalCount": 626,
+          "promptEvalCount": 7488
+        },
+        {
+          "id": "f40e677a-7096-4758-acb5-33919d7bdb08",
+          "unitKey": "assembly-0",
+          "round": 0,
+          "tokenLimit": 3000,
+          "timeoutMs": 240000,
+          "elapsedMs": 58966.79278800002,
+          "outcome": "stop",
+          "evalCount": 1440,
+          "promptEvalCount": 7993
+        },
+        {
+          "id": "2658f058-a409-4c48-a5f7-0022a1bc11e1",
+          "unitKey": "assembly-1",
+          "round": 0,
+          "tokenLimit": 3000,
+          "timeoutMs": 240000,
+          "elapsedMs": 19451.080534000066,
+          "outcome": "stop",
+          "evalCount": 305,
+          "promptEvalCount": 7965
+        }
+      ],
+      "mode": "design"
+    }
+  ],
+  "physical": "NOT_TESTED",
+  "isolation": {
+    "checkedFiles": 49,
+    "changedFiles": [],
+    "workersStopped": true
+  },
+  "previewInspections": {
+    "guided-initial": {
+      "designHash": "a587a50d802e46b462d25920b6cfa36b62cbd93bd1a8f27c9aad5df1ecf0e52b",
+      "source": "production StudioViewportController, actual hash-verified native STL files",
+      "status": {
+        "loaded": 11,
+        "total": 11,
+        "receivedBytes": 129872,
+        "parseMs": 2.1000000163912773,
+        "error": "",
+        "native": true,
+        "projection": "orthographic",
+        "direction": "top",
+        "routed": 0,
+        "wiresVisible": false,
+        "exploded": false,
+        "showWires": true
+      },
+      "errors": [],
+      "physical": "NOT_TESTED"
+    },
+    "guided-repair": {
+      "designHash": "3651775e1085520eccb06ef42b981409e594d7f7862a60596144d3aef66f9cd0",
+      "source": "production StudioViewportController, actual hash-verified native STL files",
+      "status": {
+        "loaded": 11,
+        "total": 11,
+        "receivedBytes": 129872,
+        "parseMs": 2.200000010430813,
+        "error": "",
+        "native": true,
+        "projection": "orthographic",
+        "direction": "top",
+        "routed": 0,
+        "wiresVisible": false,
+        "exploded": false,
+        "showWires": true
+      },
+      "errors": [],
+      "physical": "NOT_TESTED"
+    },
+    "staged-initial": {
+      "designHash": "23ea9bd0e3ca0fecceeac4235c2cd2bb5b8cea1ee4c23b5e4c4f5a535cdd37be",
+      "source": "production StudioViewportController, actual hash-verified native STL files",
+      "status": {
+        "loaded": 6,
+        "total": 6,
+        "receivedBytes": 105820,
+        "parseMs": 2,
+        "error": "",
+        "native": true,
+        "projection": "orthographic",
+        "direction": "top",
+        "routed": 0,
+        "wiresVisible": false,
+        "exploded": false,
+        "showWires": true
+      },
+      "errors": [],
+      "physical": "NOT_TESTED"
+    },
+    "staged-repair": {
+      "designHash": "3c23c0717b3bbe584520931ada101debb5795ca1ed3627a43a34cc8bab4380e0",
+      "source": "production StudioViewportController, actual hash-verified native STL files",
+      "status": {
+        "loaded": 6,
+        "total": 6,
+        "receivedBytes": 105820,
+        "parseMs": 1.3000000044703484,
+        "error": "",
+        "native": true,
+        "projection": "orthographic",
+        "direction": "top",
+        "routed": 0,
+        "wiresVisible": false,
+        "exploded": false,
+        "showWires": true
+      },
+      "errors": [],
+      "physical": "NOT_TESTED"
+    }
+  },
+  "visualAcceptance": "FAILED: upright primitive assemblies, misplaced or disconnected components; no coherent airplane."
+}
