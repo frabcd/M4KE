@@ -3,7 +3,7 @@ import {parseGenerationJson} from './studio-generation-json.mjs';
 import {READINESS_SCHEMA,QUESTIONS_SCHEMA,planProposalSchema,validateReadiness,validateGenerationProposal,partitionGeneration,schemaForGenerationUnit,validateGenerationUnit,assembleGeneration,dependentUnitKeys} from './studio-generation-stages.mjs';
 import {descriptorFor,dependencyHashes,canResumeGeneration} from './studio-generation-checkpoints.mjs';
 
-const special=key=>({key,kind:key,ids:[],dependsOn:[],tokenLimit:key==='readiness'?1500:4000,timeoutMs:key==='readiness'?180000:300000});
+const special=key=>({key,kind:key,ids:[],dependsOn:[],tokenLimit:key==='readiness'?1500:5000,timeoutMs:key==='readiness'?180000:300000});
 function stopped(message,canResume=false){return Object.assign(new Error(message),{canResume});}
 function questionsSpec(r){return {schemaVersion:1,title:'Clarification required',description:'Essential inputs are needed before proceeding.',units:'mm',requirements:r.requirements,assumptions:r.assumptions,unknowns:r.unknowns,questions:r.questions,parts:[],assembly:[]};}
 

@@ -28,7 +28,7 @@ const sectionStages=new Map([
  ['Ask the host to verify your design — verificationRequests',['metadata']],
  ['September 28 electrical and motion contract',['electricalComponent','connection','metadata','assembly','buildItem']],
  ['Source-catalog mating checks',['part','metadata','assembly']],
- ['Online research boundary',['plan','metadata','buildItem']],
+ ['Online research boundary',['metadata','buildItem']],
 ]);
 export function buildStagedMessages({unit,contextSnapshot,state={}}){
  const skills=contextSnapshot.stageSkills;
@@ -89,7 +89,7 @@ export function buildStagedMessages({unit,contextSnapshot,state={}}){
  const stageScope=kind==='readiness'?'\nIntake stage scope: extract the user\'s requirements, confirmed answers, delegated decisions and unresolved constraints. Do not select hardware or promote your own component choices into requirements. Preserve hardware explicitly required by the user. Detailed source facts are unavailable here; source-backed hardware selection belongs to planning under the upstream skill. Do not invent new behavior, targets or evidence.':kind==='plan'?'\nPlanning stage scope: apply upstream clarification rules and delegated choices. Preserve readiness requirements exactly. Retain every intake assumption and unknown verbatim; append any newly proposed assumptions and discovered unknowns. Added notes are not evidence that an earlier unknown is resolved. Never invent ratings. Local interfaces are unchanged; raw probe metadata remains in the frozen context and returns in selected part stages. Readiness is already ready: retained preference/physical unknowns are disclosures, not new unanswered decisions. Reopen questions only for a newly identified blocking conflict; state that conflict. Do not ask again about delegated type, scale, detail, component selection or topology. Use stageOutputContract for the PLAN object; do not substitute a survey for planning.':'';
  const detailScope=!['readiness','plan'].includes(kind)?'\nDetail stage: output stageOutputContract, only the assigned IDs. All selected form/component decisions are already in the plan. Do not reopen delegated type, color, scale or detail preferences from retained unknowns. A genuinely new blocking fact may require a precise conflict question; unchanged preference disclosures do not. Part/assembly/buildItem/electricalComponent/connection responses wrap their records in {"items":[...]}; metadata returns only its assigned metadata fields.':'';
  const planCopyScope=kind==='plan'?'\nPlanning output uses newAssumptions/newUnknowns ONLY for additional disclosures. Host copies the original readiness requirements, assumptions and unknowns verbatim. Do not emit or rephrase those three fields. Return compact JSON with no indentation; empty new disclosure arrays are allowed. This changes output shape only, not the user requirements or geometry.':'';
- return [{role:'system',content:contract+REQUEST_GUIDANCE+'\n'+rules+'\n'+skills.library+(kind==='readiness'?'\n'+skills.dyson:'')+stageScope+detailScope+planCopyScope+'\nReturn only the assigned stage schema; do not output a whole design.'},{role:'user',content:JSON.stringify(data)}];
+ return [{role:'system',content:contract+(kind==='plan'?'':REQUEST_GUIDANCE)+'\n'+rules+'\n'+skills.library+(kind==='readiness'?'\n'+skills.dyson:'')+stageScope+detailScope+planCopyScope+'\nReturn only the assigned stage schema; do not output a whole design.'},{role:'user',content:JSON.stringify(data)}];
 }
 
 /** Narrow fresh-generation adapter. Legacy refinement and native repair stay outside. */

@@ -197,8 +197,8 @@
       "bytes": 9115
     },
     "docs/resumable-generation.md": {
-      "sha256": "eafe32a7485091302d2c1e4cdfcded649e0176d74e0832aa56de2c47e70850a7",
-      "bytes": 13596
+      "sha256": "49a23f02fc7e52e7c3927b87a00d9d27969cd8d08e7f88d20ce64bcdc8a19f6c",
+      "bytes": 14231
     },
     "docs/skill-integration-handoff.md": {
       "sha256": "e5001fbce2ae7a527a49585066e63e1f44937fbef58eeff098baae618e0197a9",
@@ -569,7 +569,7 @@
       "bytes": 7072
     },
     "server/studio-generation-checkpoints.mjs": {
-      "sha256": "913f81268f5e68157c586da0abdb1fe22e3e53c947a331fdf0f3c96387de7427",
+      "sha256": "7f1442a8cf50b55e90d36d58f0667017a9e276ff23c64fc97ef653b317d05d3f",
       "bytes": 16492
     },
     "server/studio-generation-diagnostics.mjs": {
@@ -673,12 +673,12 @@
       "bytes": 9149
     },
     "server/studio-staged-generation.mjs": {
-      "sha256": "71f388964a1ecc0f895f32ff5dae8b8c0a53b04d7ac0371f136bebbef7ccc238",
+      "sha256": "0ec5e4a26e3eff3f2879e3674075b651f59c2ba7a07a2a9a1a34f729765ae72c",
       "bytes": 9407
     },
     "server/studio-staged-service.mjs": {
-      "sha256": "e1a9d38d0d19d70db4355d01c03e8583788a71d3997208091c5794933cfc7027",
-      "bytes": 17982
+      "sha256": "ed77a1669afea3cb39c748457d924b461371febe5aac6e2f95020c5dfafe0350",
+      "bytes": 17994
     },
     "server/studio-usability.mjs": {
       "sha256": "26af567ba1c7098927aa3f942b4772dce2cf5d734bc842cbec040999026be16f",
@@ -1237,8 +1237,8 @@
       "bytes": 2054
     },
     "tests/studio-generation-budget.test.mjs": {
-      "sha256": "f8cfe7d3e7e01f2a2b05080e3ba5e2e8474c2f871344c426abb4d58a584ae73a",
-      "bytes": 3850
+      "sha256": "705b8d285a3b5563490ee5410acb26cfa9d37fd025d33e3a2c44870f0635ccf7",
+      "bytes": 4401
     },
     "tests/studio-generation-checkpoints.test.mjs": {
       "sha256": "120607db46fad95e2172f25fcbbc9d2f3e7fe177a0ae955cb06944320f664c10",
@@ -1337,11 +1337,11 @@
       "bytes": 54272
     },
     "tests/studio-staged-context.test.mjs": {
-      "sha256": "cc843178caa2a8693f2ba09405e0d4b501a4040841cfae35b57bc3be4becbb06",
+      "sha256": "721ad3ffc55f99eac44d82fc0ea877d6c7535bf76d334b67f9cc951df2bf3f9b",
       "bytes": 12102
     },
     "tests/studio-staged-generation.test.mjs": {
-      "sha256": "98aa9b5a9e9e1b98490d19c9ad1c7ca2b3ca07e0dc702c0b3441d9e13171cd74",
+      "sha256": "a6a91942eefd4ce33ae7b4636c22d4deb98feeaab1ec2a4698befd0682b8ef31",
       "bytes": 11880
     },
     "tests/studio-staged-projects.test.mjs": {
@@ -1433,8 +1433,8 @@
       "bytes": 11712
     },
     "texting.txt": {
-      "sha256": "ea7684f8d6cd8e96f57418cfd9e68112e5af88e40b6dcb99edf9930c92182b4e",
-      "bytes": 52817
+      "sha256": "3649d439015ed22ee1a01808b5b7ae5c0a74e824ddf9fd00981cd603a3e2ca8b",
+      "bytes": 54180
     },
     "tsconfig.json": {
       "sha256": "5254b6412d77d8bcbcf50652402d4ee45a1379d3335cb3c155367e886961e51c",

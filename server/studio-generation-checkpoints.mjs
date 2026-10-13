@@ -37,7 +37,7 @@ async function writeJson(file,value){
 }
 const allowedStatuses=['running','stopped','questions','accepted','exhausted'];
 function remaining(s){return {requests:64-s.reservations.length,requestedOutputTokens:60000-s.reservations.reduce((n,r)=>n+r.tokenLimit,0),activeMs:2400000-s.reservations.reduce((n,r)=>n+(r.elapsedMs??r.timeoutMs),0)};}
-function requestLimit(key){return key==='readiness'?[1500,180000]:key==='plan'?[4000,300000]:[3000,240000];}
+function requestLimit(key){return key==='readiness'?[1500,180000]:key==='plan'?[5000,300000]:[3000,240000];}
 /** Eligibility mirrors the next dispatch, including orphaned reservations after restart. */
 export function canResumeGeneration(s){
   if(['accepted','questions','exhausted'].includes(s.status))return false;

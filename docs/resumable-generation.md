@@ -186,3 +186,12 @@ geometry still has the existing unqualified-source/engineering boundaries.
 Uncovered assembly diagnostics now identify the exact missing part IDs. Complete
 source regression662 passed,20 skipped;22 browser workflow checks passed with a
 controlled delayed view-state restore. Real car acceptance remains pending.
+
+After actual repeated4000-token car-plan truncations, the planning allowance is
+5000 tokens per attempt. The durable60000-token/64-request/40-minute total remains
+unchanged and reservations cannot be refunded by short output or restart. The
+planning route omits duplicated application REQUEST_GUIDANCE; original request,
+answers, source facts, upstream skill rules and later-stage/host constraints remain.
+The complete-message context test now reserves5000 output tokens plus1024 overhead.
+Current source regression663 passed,20 skipped,0 failed. The car's end-to-end native
+CAD/electrical/assembly/visual acceptance remains pending.
