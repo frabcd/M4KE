@@ -28,7 +28,12 @@ export const PLAN_SCHEMA=obj({title:D.title,description:D.description,units:D.un
 // Intake text is already durable. Generate only new disclosures; the host copies
 // the exact originals into the same final plan contract, without model rewrites.
 const {requirements:_requirements,assumptions:_assumptions,unknowns:_unknowns,buildItems:buildItemIds,verificationRequests:verificationIds,...planChoices}=PLAN_SCHEMA.properties;
-export const PLAN_PROPOSAL_SCHEMA=obj({...planChoices,parts:arr(obj({...PLAN_SCHEMA.properties.parts.items.properties,profileId:nullable({type:'string',enum:ELECTRICAL_PROFILES.map(p=>p.id)})}),24,1),electrical:nullable(obj({connections:PLAN_SCHEMA.properties.electrical.anyOf[0].properties.connections,control:bool})),buildItemIds,verificationIds,newAssumptions:D.assumptions,newUnknowns:D.unknowns});
+// Parts are chosen in this same response, so their IDs cannot yet be bound in
+// the decoder. Exclude invented terminal spellings here; exact profile/part
+// membership remains a host invariant before any plan can be frozen.
+const proposedEndpoint=obj({partId:id,terminal:{type:'string',enum:[...new Set(ELECTRICAL_PROFILES.flatMap(p=>p.terminals.map(t=>t.id)))]}});
+const proposedConnections=arr(obj({id,from:proposedEndpoint,to:proposedEndpoint,kind:E.connections.items.properties.kind}),96);
+export const PLAN_PROPOSAL_SCHEMA=obj({...planChoices,parts:arr(obj({...PLAN_SCHEMA.properties.parts.items.properties,profileId:nullable({type:'string',enum:ELECTRICAL_PROFILES.map(p=>p.id)})}),24,1),electrical:nullable(obj({connections:proposedConnections,control:bool})),buildItemIds,verificationIds,newAssumptions:D.assumptions,newUnknowns:D.unknowns});
 export function planProposalSchema(readiness,sources){
   const schema=structuredClone(PLAN_PROPOSAL_SCHEMA);
   if(sources){
@@ -107,7 +112,7 @@ export function validateGenerationPlan(raw,{readiness,sources={catalogIds:[],lib
     }
     for(const c of p.electrical.connections){
       if(!selected.has(c.from.partId)||!selected.has(c.to.partId))fail('connection reference');
-      for(const end of [c.from,c.to]){const profile=profileById(p.electrical.components.find(component=>component.partId===end.partId).profileId);if(profile&&!profile.terminals.some(t=>t.id===end.terminal))fail('unknown profile terminal: '+end.partId+':'+end.terminal);}
+      for(const end of [c.from,c.to]){const profile=profileById(p.electrical.components.find(component=>component.partId===end.partId).profileId);if(profile&&!profile.terminals.some(t=>t.id===end.terminal))fail('unknown profile terminal: '+end.partId+':'+end.terminal+' for '+profile.id+'. Allowed: '+profile.terminals.map(t=>t.id).join(', ')+'. Use the selected profile roles; input-only ADC pins cannot drive outputs.');}
     }}
   for(const k of ['buildItems','verificationRequests'])if(p[k])unique(p[k]);
   const collided=p.buildItems?.filter(x=>ids.has(x));
@@ -138,6 +143,13 @@ export function schemaForGenerationUnit(p,u){
     item.properties.shape=shape;
     if(r.source===null||r.source===undefined)delete item.properties.source;
     else{item.properties.source={const:r.source};item.required.push('source');}
+    return item;
+  })};
+  if(u.kind==='connection')schemas.connection={anyOf:u.ids.map(id=>{
+    const r=p.electrical.connections.find(c=>c.id===id);if(!r)fail('unknown planned connection');
+    const item=structuredClone(E.connections.items);
+    for(const key of ['id','kind'])item.properties[key]={const:r[key]};
+    for(const key of ['from','to'])item.properties[key]=obj({partId:{const:r[key].partId},terminal:{const:r[key].terminal}});
     return item;
   })};
   if(!schemas[u.kind])fail('unknown unit kind');return obj({items:arr(schemas[u.kind],u.ids.length,u.ids.length)});

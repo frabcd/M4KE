@@ -195,3 +195,7 @@ answers, source facts, upstream skill rules and later-stage/host constraints rem
 The complete-message context test now reserves5000 output tokens plus1024 overhead.
 Current source regression663 passed,20 skipped,0 failed. The car's end-to-end native
 CAD/electrical/assembly/visual acceptance remains pending.
+
+### 2026-10-13: exact terminal vocabulary and immutable wire details
+The real car run V12 completed both planning responses but failed on an unsupported ESP32 IO5 endpoint (389.34 seconds overall; NOT_ACCEPTED). The proposal decoder now admits only terminal spellings from the existing electrical profiles. Cross-part selection is still checked against the actual selected profile before freezing; a mismatch reports that profile and its allowed terminals. This union vocabulary does not prove role or power compatibility, which retain their existing checks. No terminal is renamed or added to make a model output pass.
+Once the plan is validated, each connection-detail alternative freezes its assigned ID, both exact endpoints and kind. Routing, gauge and color remain generated details. Two regressions failed before this fix and pass after it; Linux source665PASS/20SKIP/0FAIL and49focusedPASS. V13 uses the same car brief and sources in full auto mode; actual CAD, circuit, assembly, appearance and physical acceptance remain pending.

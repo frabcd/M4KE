@@ -111,6 +111,27 @@ test('units reject missing extra duplicate IDs and changed poses; assembly uses 
 });
 import {READINESS_SCHEMA,assertGenerationSchema,schemaForGenerationUnit} from '../server/studio-generation-stages.mjs';
 import {ollamaProjection} from '../server/studio-schema.mjs';
+import {ELECTRICAL_PROFILES} from '../server/studio-electrical-profiles.mjs';
+
+test('planning decoder rejects invented pins without rewriting supported terminal names',()=>{
+ const endpoint=ollamaProjection(planProposalSchema(readiness()),{asciiIds:true}).properties.electrical.anyOf[0].properties.connections.items.properties.from;
+ for(const profile of ELECTRICAL_PROFILES)for(const terminal of profile.terminals)assert.doesNotThrow(()=>assertGenerationSchema({partId:'controller',terminal:terminal.id},endpoint));
+ for(const terminal of ['IO5','GPIO4','34','invented'])assert.throws(()=>assertGenerationSchema({partId:'controller',terminal},endpoint));
+ const p=plan();p.parts[0].kind='purchased';p.electrical={components:[{partId:'p0',profileId:'esp32-devkitc-v4-wroom32e'}],connections:[{id:'wire',from:{partId:'p0',terminal:'GP4'},to:{partId:'p0',terminal:'GND'},kind:'signal'}],control:false};
+ // A pin valid on another profile must still fail the exact component check.
+ assert.throws(()=>validateGenerationProposal(proposal(p),{readiness:readiness()}),e=>e.message.includes('p0:GP4')&&e.message.includes('esp32-devkitc-v4-wroom32e')&&e.message.includes('IO4')&&!e.message.includes('IO5'));
+});
+
+test('connection decoder freezes both endpoints and kind for each assigned wire',()=>{
+ const p=plan(2);p.electrical={components:[{partId:'p0',profileId:'battery-dc'},{partId:'p1',profileId:'fuse-series'}],connections:[{id:'supply',from:{partId:'p0',terminal:'+'},to:{partId:'p1',terminal:'IN'},kind:'power'}],control:false};
+ const unit=partitionGeneration(p).find(u=>u.kind==='connection'),wire={...p.electrical.connections[0],color:'#808080',wireAwg:24};
+ for(const schema of [schemaForGenerationUnit(p,unit),ollamaProjection(schemaForGenerationUnit(p,unit),{asciiIds:true})]){
+  assert.doesNotThrow(()=>assertGenerationSchema({items:[wire]},schema));
+  for(const mutate of [w=>w.from.terminal='-',w=>w.to.partId='p0',w=>w.kind='signal',w=>w.id='other']){
+   const bad=structuredClone(wire);mutate(bad);assert.throws(()=>assertGenerationSchema({items:[bad]},schema));
+  }
+ }
+});
 
 test('part decoder freezes each assigned identity, pose and nullable source like host validation',()=>{
  const p=plan(2),u=partitionGeneration(p)[0],good=payload(p,u);for(const part of good.items)part.color='#808080';
