@@ -59,3 +59,5 @@
 - Second fresh model test uses another isolated source snapshot, unchanged request and original deadline. Save its actual receipt before claiming any further stage success.
 
 - Second model run ended126.01s at the existing version gate, with no orphan electrical-profile diagnostic. RED/GREEN added decoder version coupling for profiles/datums/placement and preserved legacy plans. Full680PASS/21SKIP, focused59PASS Windows/Linux; independent16tests+14variants. Third run is isolated with unchanged request and original deadline. No real model acceptance yet.
+
+- Third test ended137.05s NOT_ACCEPTED at late metadata questions. Saved units: five cylinders, all at origin, contradict claimed profile form. No native/preview.49 shared files unchanged, owned workers stopped/port closed. Upstream design/clarification handoff appended to shared texting.txt with exact receipts. Do not manufacture geometry or call schema passes product success.

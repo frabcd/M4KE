@@ -41,3 +41,14 @@ Verification after the decoder fix:
 The second run, project `b6156e29-c798-4e1f-aca7-fd399aafd004`, stopped after 126.01 seconds with `geometryVersion:2 required`. Both planning replies ended normally, not by truncation. No native CAD/preview was produced; shared files remained unchanged. A second RED/GREEN regression now expresses the version dependency in decoder alternatives: profiles, datums and placement require V2, while legacy basic/source shapes remain supported. Host version checks remain authoritative.
 
 After this correction: full clean source suite 680 passed / 21 skipped; focused 59 passed on Windows and Linux. Independent review passed 16 stage tests plus 14 additional legacy/V2 source and powered variants. A third real-model run was launched under the same original cutoff; its receipt is pending. The earlier unchanged native-kernel tests are not a generated-airplane result.
+
+
+## Final result of this isolated testing round
+
+Third run: project `21fada23-8ff2-45f6-b5cc-1ebb4c9492e3`, generation `4fbe5ef6-0d6e-4676-b814-1d5a3c6b799e`, 137.05 seconds. Planning and two part units passed their schema checks. Metadata then returned questions about aircraft type, length and style despite the original request delegating those defaults. The whole design is NOT_ACCEPTED. No native build or connected preview occurred.
+
+Inspection of the saved, unaccepted units found five cylinders, all with position and rotation `[0,0,0]`. The narrative claimed lofted/extruded airplane features, while executable shape identities remained cylinders; there were no V2 datums or placement graph. This is not a recognizable airplane acceptance result. Passing unit schemas proves neither semantic design quality nor valid assembly.
+
+All three runs used the same request and model digest. Workers stopped at each terminal result; 49 monitored shared files remained unchanged, and the owned test port closed. The shared coordination file contains the exact failure evidence and asks the upstream owner to correct shape/pose selection and delegated-choice handling. No hand-authored benchmark geometry, relaxed checks, shared deployment or teammate-source edits were used.
+
+Scope conclusion: the new decoder constraints resolve the observed electrical/version contract holes; the original quality goal remains unmet. Physical fit/strength/printing and native/visual acceptance remain NOT_TESTED. A subsequent upstream change needs a new version-pinned test; these receipts must not be presented as a pass.
