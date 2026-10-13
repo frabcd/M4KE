@@ -10,16 +10,19 @@ import {createGenerationCheckpointStore,hashGenerationValue} from '../server/stu
 export function benchmarkReceipt({project,checkpoint,job,elapsedMs}) {
   const identity=checkpoint?.identity?.identity;
   const admitted=checkpoint?.status==='accepted'&&Boolean(project.designHash)&&Boolean(project.spec?.parts?.length)&&!project.spec.questions?.length;
+  const matchingJob=admitted&&Boolean(project.jobId)&&job?.id===project.jobId&&job?.designHash===project.designHash;
   return {schemaVersion:1,scope:'Observed software artifacts only; physical fit/strength and connected preview require separate tests.',
     projectId:project.id,status:project.workflow?.status,inputHash:hashGenerationValue({request:project.request,answers:[...(project.answers||[])].sort((a,b)=>a.id.localeCompare(b.id)),budget:project.budget}),
     protocol:checkpoint?.protocol??null,model:identity?.model??null,sourceHash:identity?.sourceHash??null,schemaHash:identity?.schemaHash??null,skillHash:identity?.skillHash??null,contextHash:identity?.contextHash??null,
-    generationId:project.workflow?.generationId??null,elapsedMs,calls:checkpoint?.reservations??[],reusedUnits:project.workflow?.generation?.reusedUnits??0,
+    generationId:project.workflow?.generationId??null,mode:project.workflow?.mode??null,elapsedMs,calls:checkpoint?.reservations??[],callsScope:'INITIAL_STAGED_GENERATION_ONLY',reusedUnits:project.workflow?.generation?.reusedUnits??0,
+    workflowAttempts:project.workflow?.attempts??[],nativeVerification:matchingJob&&job.verification?.revisionHash===project.designHash?job.verification:null,
     questions:project.pendingQuestions||project.spec?.questions||[],admission:admitted?'ACCEPTED':'NOT_ACCEPTED',designHash:admitted?project.designHash:null,
-    nativeCad:admitted&&job?.designHash===project.designHash&&job?.status==='complete'&&job.cad?.parts?.length?'ARTIFACTS_REPORTED':'NOT_TESTED',
+    nativeCad:matchingJob&&job.status==='complete'&&job.cad?.parts?.length?'ARTIFACTS_REPORTED':'NOT_TESTED',
     preview:'NOT_TESTED',physical:'NOT_TESTED',pricing:admitted&&project.priceSearch?.designHash===project.designHash?'CURRENT_HASH_REPORT':'NOT_TESTED'};
 }
 export function compareBenchmarks(before,after) {
   if(!before||!after||before.admission!=='ACCEPTED'||after.admission!=='ACCEPTED')throw Error('Only accepted results can be compared.');
+  if(!['design','auto'].includes(before.mode)||before.mode!==after.mode)throw Error('Comparison requires identical recorded workflow mode.');
   for(const key of ['inputHash','sourceHash','contextHash'])if(!before[key]||before[key]!==after[key])throw Error('Comparison requires identical '+key);
   if(!before.model?.digest||before.model.digest!==after.model?.digest)throw Error('Comparison requires identical model digest.');
   if(![before.elapsedMs,after.elapsedMs].every(n=>Number.isFinite(n)&&n>0))throw Error('Missing elapsed measurements.');

@@ -59,9 +59,18 @@ export async function runStagedGeneration({identity,contextSnapshot,store,infer,
   }
   async function unit(u){
     if(h.snapshot().units.some(r=>r.key===u.key))return;
+    current=u.key;signal?.throwIfAborted();
+    const schema=schemaForGenerationUnit(h.snapshot().plan,u);
+    // An empty metadata schema has exactly one valid payload. Keep its validated
+    // dependency checkpoint, but do not ask the model to invent work or questions.
+    if(u.kind==='metadata'&&schema.type==='object'&&schema.additionalProperties===false&&Object.keys(schema.properties).length===0){
+      const value=validateGenerationUnit(h.snapshot().plan,u,{},h.snapshot().units);
+      await h.saveUnit({descriptor:u,payload:value,dependencyHashes:dependencyHashes(h.snapshot(),u)});
+      await progress(u.kind);return;
+    }
     const split=h.snapshot().splits.includes(h.snapshot().repairRounds+':'+u.key);
     let value;
-    if(!split){try{value=await validatedRequest(u,schemaForGenerationUnit(h.snapshot().plan,u),v=>validateGenerationUnit(h.snapshot().plan,u,v,h.snapshot().units));}
+    if(!split){try{value=await validatedRequest(u,schema,v=>validateGenerationUnit(h.snapshot().plan,u,v,h.snapshot().units));}
       catch(e){if(!e.truncated||u.ids.length<2||remainingAttempts(u.key)!==1)throw e;await h.startSplit(u.key);}}
     if(value===undefined){
       for(let i=0;i<u.ids.length;i++)await unit(descriptorFor(h.snapshot().plan,u.key+'~'+i));

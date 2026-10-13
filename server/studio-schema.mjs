@@ -1,5 +1,6 @@
 import { PHYSICS_RANGES } from './studio-contract.mjs';
 import {ELECTRICAL_JSON_SCHEMA} from './studio-electrical.mjs';
+import {PARAMETRIC_SHAPES,DATUM_SCHEMA,PLACEMENT_SCHEMA} from './studio-parametric.mjs';
 
 // Ollama's format accepts a JSON Schema, not an example response:
 // https://docs.ollama.com/capabilities/structured-outputs
@@ -24,10 +25,12 @@ const shape = {
     object({ type: { type:'string', enum:['union'] }, solids:array(unionPrimitive,2,8) }),
     object({ type: { type: 'string', enum: ['catalog'] }, catalogId: id() }),
     object({ type: { type:'string', enum:['library'] }, sourceSha256:{type:'string',pattern:'^[a-f0-9]{64}$',minLength:64,maxLength:64} }),
+    ...PARAMETRIC_SHAPES,
   ],
 };
 const hole = object({ axis: { type: 'string', enum: ['x', 'y', 'z'] }, diameter: number(1, 500), position: vector(-500, 500), depth: number(0.5, 500) }, ['axis', 'diameter', 'position']);
 const part = object({
+  datums:array(DATUM_SCHEMA,1,16),
   id: id(), name: text(160), kind: { type: 'string', enum: ['printed', 'purchased'] },
   material: text(160), color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
   shape, position: vector(-500, 500), rotation: vector(-360, 360),
@@ -56,6 +59,7 @@ function freeze(value) {
 }
 
 export const DESIGN_JSON_SCHEMA = freeze(object({
+  geometryVersion:{const:2},placement:PLACEMENT_SCHEMA,
   schemaVersion: { type: 'integer', enum: [1] }, title: text(160), description: text(4000),
   units: { type: 'string', enum: ['mm'] },
   requirements: array(object({ id: id(), text: text() }), 1, 40),

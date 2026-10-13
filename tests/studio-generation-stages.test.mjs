@@ -143,6 +143,24 @@ test('connection decoder freezes both endpoints and kind for each assigned wire'
  }
 });
 
+test('assembly decoder freezes each assigned step and its exact references without freezing prose',()=>{
+ const p=plan(3);p.assembly=[{id:'base',partIds:['p0'],requires:[]},{id:'attach',partIds:['p1','p2'],requires:['base']}];
+ const u=partitionGeneration(p).find(u=>u.kind==='assembly'),good=payload(p,u),before=JSON.stringify(p);
+ for(const schema of [schemaForGenerationUnit(p,u),ollamaProjection(schemaForGenerationUnit(p,u),{asciiIds:true})]){
+  assert.doesNotThrow(()=>assertGenerationSchema(good,schema));
+  for(const mutate of [v=>v.items[0].id='invented',v=>v.items[0].partIds=['p1'],v=>v.items[1].partIds.reverse(),v=>v.items[1].partIds.push('p0'),v=>v.items[1].requires=[],v=>v.items[0].requires=['attach']]){
+   const bad=structuredClone(good);mutate(bad);assert.throws(()=>assertGenerationSchema(bad,schema),'Decoder must reject changed references before host admission');
+   assert.throws(()=>validateGenerationUnit(p,u,bad,[]));
+  }
+  const prose=structuredClone(good);prose.items.reverse();prose.items[0].instructions=['Model-authored detailed instruction'];assert.doesNotThrow(()=>assertGenerationSchema(prose,schema));
+  assert.equal(validateGenerationUnit(p,u,prose,[]).items[1].instructions[0],'Model-authored detailed instruction');
+ }
+ assert.equal(JSON.stringify(p),before);
+ const duplicate=structuredClone(good);duplicate.items[1]=duplicate.items[0];assert.throws(()=>validateGenerationUnit(p,u,duplicate,[]),/duplicate/);
+ const split={...u,ids:['attach']};assert.doesNotThrow(()=>assertGenerationSchema({items:[good.items[1]]},schemaForGenerationUnit(p,split)));
+ assert.throws(()=>assertGenerationSchema({items:[good.items[0]]},schemaForGenerationUnit(p,split)));
+});
+
 test('part decoder freezes each assigned identity, pose and nullable source like host validation',()=>{
  const p=plan(2),u=partitionGeneration(p)[0],good=payload(p,u);for(const part of good.items)part.color='#808080';
  for(const schema of [schemaForGenerationUnit(p,u),ollamaProjection(schemaForGenerationUnit(p,u))]){
@@ -153,3 +171,32 @@ test('part decoder freezes each assigned identity, pose and nullable source like
  }
 });
 test('decoder readiness alternatives enforce the same status/question invariant as host',()=>{const question={id:'q1',question:'Which interface?'};for(const schema of [READINESS_SCHEMA,ollamaProjection(READINESS_SCHEMA)]){assert.doesNotThrow(()=>assertGenerationSchema(readiness(),schema));assert.doesNotThrow(()=>assertGenerationSchema({...readiness(),status:'questions',questions:[question]},schema));assert.throws(()=>assertGenerationSchema({...readiness(),status:'ready',questions:[question]},schema));assert.throws(()=>assertGenerationSchema({...readiness(),status:'questions',questions:[]},schema));}});
+
+
+test('proposal decoder prevents profiles on an unpowered plan or printed part',()=>{
+ const context={readiness:readiness(),sources:{catalogIds:['pololu-lp6v-1098'],libraryHashes:[]}};
+ const p=plan(2),plain=proposal(p),powered=structuredClone(plain);
+ powered.parts[0].kind='purchased';powered.parts[0].profileId='battery-dc';powered.electrical={connections:[],control:false};
+ for(const decoder of [planProposalSchema(context.readiness,context.sources),ollamaProjection(planProposalSchema(context.readiness,context.sources),{asciiIds:true})]){
+  assert.doesNotThrow(()=>assertGenerationSchema(plain,decoder));
+  assert.doesNotThrow(()=>assertGenerationSchema(powered,decoder));
+  const orphan=structuredClone(powered);orphan.electrical=null;
+  assert.throws(()=>assertGenerationSchema(orphan,decoder),'No circuit must require null profiles in the decoder, not only final validation');
+  const printed=structuredClone(powered);printed.parts[0].kind='printed';
+  assert.throws(()=>assertGenerationSchema(printed,decoder),'Electrical components cannot be printed shells');
+ }
+ assert.deepEqual(validateGenerationProposal(plain,context),p);
+});
+
+
+test('decoder requires version 2 for profile shapes or named datums while retaining legacy plans',()=>{
+ const context={readiness:readiness(),sources:{catalogIds:[],libraryHashes:[]}};
+ for(const decoder of [planProposalSchema(context.readiness,context.sources),ollamaProjection(planProposalSchema(context.readiness,context.sources),{asciiIds:true})]){
+  assert.doesNotThrow(()=>assertGenerationSchema(proposal(plan()),decoder));
+  for(const change of [p=>p.parts[0].identity={type:'profileLoft'},p=>p.parts[0].identity={type:'profileExtrusion'},p=>p.parts[0].datumIds=['mount'],p=>p.placement={version:1,roots:p.parts.map(part=>({partId:part.id,reason:'Regression root'})),attachments:[]}]){
+   const raw=proposal(plan());change(raw);
+   assert.throws(()=>assertGenerationSchema(raw,decoder),'V2 features must not decode without their version');
+   raw.geometryVersion=2;assert.doesNotThrow(()=>assertGenerationSchema(raw,decoder));
+  }
+ }
+});

@@ -71,6 +71,7 @@ onMounted(async()=>{try{
       const g=new STLLoader().parse(bytes as ArrayBuffer);geometries.add(g);group.add(new THREE.Mesh(g,m));
     }else if(part.shape.type==='box'||part.shape.type==='cylinder'){group.add(new THREE.Mesh(primitive(part.shape),m));}
     else if(part.shape.type==='union'){for(const s of part.shape.solids){const mesh=new THREE.Mesh(primitive(s),m);mesh.position.fromArray(s.position);mesh.rotation.set(...s.rotation.map(THREE.MathUtils.degToRad) as [number,number,number]);group.add(mesh);}}
+    else if(part.shape.type==='profileExtrusion'||part.shape.type==='profileLoft')throw Error(`Native CAD mesh required for profile part: ${part.id}`);
     else {const shape=part.shape;const size=shape.type==='catalog'?props.components.find(c=>c.id===shape.catalogId)?.geometry?.boundsMm:props.librarySources.find(s=>s.sourceSha256===shape.sourceSha256)?.dimensionsMm;
       if(!size)throw Error(`Component envelope unavailable: ${part.id}`);group.add(new THREE.Mesh(primitive({type:'box',size}),m));}
     group.position.fromArray(part.position);group.rotation.set(...part.rotation.map(THREE.MathUtils.degToRad) as [number,number,number]);group.userData={partId:part.id,partName:part.name};source.add(group);

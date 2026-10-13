@@ -11,6 +11,17 @@ test('corrupt source cannot be snapshot as verified dependency',async()=>{const 
 test('catalog ID and path fail closed; no arbitrary network fetch occurs',async()=>{const f=await fixture();try{await assert.rejects(snapshotKernel(f.root,path.join(f.root,'job'),{parts:[{shape:{type:'catalog',catalogId:'unknown'}}]}),/no source STEP/);f.manifest.components[0].geometry.step='../../secret.step';await writeFile(path.join(f.root,'catalog','manifest.json'),JSON.stringify(f.manifest));await assert.rejects(snapshotKernel(f.root,path.join(f.root,'job2'),{parts:[{shape:{type:'catalog',catalogId:'source-part'}}]}),/Unsafe/);}finally{await f.close();}});
 
 const sourceGeometry={step:'models/synthetic.step',sha256:'a'.repeat(64)};
+test('v2 snapshots its independent native contract and hash; missing helper fails closed',async()=>{
+  const f=await fixture();try{
+    const spec={geometryVersion:2,parts:[]},dir=path.join(f.root,'job-v2');
+    await assert.rejects(snapshotKernel(f.root,dir,spec),/ENOENT/);
+    const bytes='frozen parametric validator fixture';await writeFile(path.join(f.root,'cad','parametric_geometry.py'),bytes);
+    const result=await snapshotKernel(f.root,dir,spec);
+    assert.equal(result.hashes['kernel/parametric_geometry.py'],createHash('sha256').update(bytes).digest('hex'));
+    await writeFile(path.join(f.root,'cad','parametric_geometry.py'),'later code');
+    assert.equal(await readFile(path.join(dir,'kernel','parametric_geometry.py'),'utf8'),bytes);
+  }finally{await f.close();}
+});
 const rating=(value,unit)=>({value,unit,basis:'MANUFACTURER_PUBLISHED'});
 const motorCatalog={components:[{id:'motor-1098',sku:'1098',geometry:sourceGeometry,ratings:{noLoadRpm:rating(270,'rpm'),theoreticalStallTorqueKgfCm:rating(.44,'kgf*cm'),theoreticalStallCurrentA:rating(.36,'A'),voltageV:rating(6,'V')}},{id:'motor-992',sku:'992',geometry:sourceGeometry,ratings:{noLoadRpm:rating(130,'rpm'),theoreticalStallTorqueKgfCm:rating(.74,'kgf*cm'),theoreticalStallCurrentA:rating(.36,'A'),voltageV:rating(6,'V')}}]};
 const input=(value,basis='MANUFACTURER')=>({value,basis,source:'test fixture provenance'});

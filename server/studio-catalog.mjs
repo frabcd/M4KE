@@ -64,6 +64,7 @@ export async function snapshotKernel(root,dir,spec,metadataIds=[],libraryOptions
   const files=[];const hashes={};
   async function save(name,bytes){await mkdir(path.dirname(path.join(dir,name)),{recursive:true});await writeFile(path.join(dir,name),bytes);files.push(name);hashes[name]=createHash('sha256').update(bytes).digest('hex');}
   for(const name of ['worker.py','catalog_geometry.py','catalog_mates.py','requirements.txt']){try{await save('kernel/'+name,await readFile(path.join(root,'cad',name)));}catch(e){if(name==='catalog_mates.py'&&e.code==='ENOENT'&&!spec.verificationRequests?.some(r=>r.type==='catalogMate'))continue;if(name!=='catalog_geometry.py'||spec.parts.some(p=>p.shape.type==='catalog'))throw e;}}
+  if(spec.geometryVersion===2)await save('kernel/parametric_geometry.py',await readFile(path.join(root,'cad/parametric_geometry.py')));
   try{await save('kernel/illustrate.py',await readFile(path.join(root,'cad','illustrate.py')));}catch(e){if(e.code!=='ENOENT')throw e;}
   if(spec.parts.some(p=>p.shape.type==='library')){
     await save('kernel/library_geometry.py',await readFile(path.join(root,'cad/library_geometry.py')));

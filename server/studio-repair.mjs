@@ -6,6 +6,7 @@ const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 /** Repair may fix geometry and wiring, never change the question being tested. */
 export function validateRepair(originalInput,nextInput){
   const original=validateDesignSpec(originalInput),next=validateDesignSpec(nextInput);
+  if(original.placement&&!same(original.placement,next.placement))throw fail('Repair changed or weakened placement attachment requirements. A new design decision is required.');
   for(const r of original.requirements)if(!next.requirements.some(n=>n.id===r.id&&n.text===r.text))throw fail('Repair changed or removed an original requirement. Proposal retained, not accepted.');
   for(const r of original.verificationRequests||[])if(!next.verificationRequests?.some(n=>same(n,r)))throw fail(`Repair removed or weakened verification request ${r.id}. Change the design, not the test.`);
   for(const [key,value] of Object.entries(original.physicsInputs||{}))if(!same(next.physicsInputs?.[key],value))throw fail(`Repair changed or removed ${key}. Changing the test inputs, assumptions or source ratings requires an explicit new decision, not automatic repair.`);

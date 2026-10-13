@@ -27,8 +27,10 @@ test('progress never reports the reserved timeout as measured generation time',a
 });
 test('later-stage decoder permits its payload or questions, never a ready-only response',async()=>{
  const c=await setup(1),base=c.infer,seen=[];
+ c.p.verificationRequests=[];
  c.infer=async args=>{
   const normal=await base(args);
+  if(args.unit.kind==='metadata')normal.content=JSON.stringify({verificationRequests:[]});
   // This runner fixture otherwise uses a color outside the decoder's fixed palette.
   if(args.unit.kind==='part'){
    const decoded=JSON.parse(normal.content);for(const part of decoded.items)part.color='#808080';normal.content=JSON.stringify(decoded);
@@ -49,6 +51,27 @@ test('later-stage decoder permits its payload or questions, never a ready-only r
  assert.ok(seen.includes('plan'));assert.ok(seen.includes('part'));assert.ok(seen.includes('metadata'));assert.ok(seen.includes('assembly'));
 });
 async function setup(n=5){const root=await mkdtemp(path.join(tmpdir(),'m4ke-runner-'));const contextSnapshot={sources:{catalogIds:[],libraryHashes:[]}},identity=generationIdentity({projectId:randomUUID(),request:'fixture',answers:[],model:{digest:'a'},skillHash:'b',schemaHash:'c',sourceHash:'d',contextHash:hashGenerationValue(contextSnapshot)}),calls=[],p=plan(n);return {root,identity,contextSnapshot,store:createGenerationCheckpointStore({root}),calls,p,buildMessages:()=>[{role:'system',content:'Fixture upstream skill'}],infer:async({unit,messages})=>{calls.push(unit.key);return response(unit.key==='readiness'?readiness():unit.key==='plan'?proposal(p,JSON.parse(messages.at(-1).content).readiness):payload(p,unit));},admit:raw=>({spec:validateDesignSpec(raw),issues:[]})};}
+test('empty metadata is validated and checkpointed without inference or a budget reservation',async()=>{
+ const c=await setup(1),base=c.infer,events=[];let admitted=0;
+ c.onProgress=p=>events.push(p);
+ c.infer=args=>args.unit.kind==='metadata'?response({...readiness(),status:'questions',questions:[{id:'style',question:'Choose a style again?'}]}):base(args);
+ c.admit=raw=>{admitted++;return {spec:validateDesignSpec(raw),issues:[]};};
+ const result=await runStagedGeneration(c);
+ assert.equal(result.status,'accepted');assert.equal(admitted,1);
+ const saved=await c.store.inspect({projectId:c.identity.identity.projectId,generationId:result.generationId});
+ const metadata=saved.state.units.find(r=>r.key==='metadata-0');
+ assert.deepEqual(metadata.payload,{});assert.equal(metadata.status,'UNIT_VALIDATED');
+ assert.ok(Object.keys(metadata.dependencyHashes).length>0);
+ assert.equal(saved.state.reservations.some(r=>r.unitKey==='metadata-0'),false);
+ assert.equal(events.find(p=>p.stage==='metadata').unitKey,'metadata-0');
+});
+test('metadata with requested fields still asks the model and preserves essential questions',async()=>{
+ const c=await setup(1),base=c.infer;let metadataCalls=0;
+ c.p.verificationRequests=[];
+ c.infer=args=>{if(args.unit.kind==='metadata'){metadataCalls++;return response({...readiness(),status:'questions',questions:[{id:'material',question:'Confirm the required material?'}]});}return base(args);};
+ const result=await runStagedGeneration(c);
+ assert.equal(result.status,'questions');assert.equal(metadataCalls,1);assert.deepEqual(result.spec.parts,[]);
+});
 test('essential questions stop before plan, geometry or admission',async()=>{
  const c=await setup();let admitted=false;c.infer=async({unit})=>{c.calls.push(unit.key);return response({...readiness(),status:'questions',questions:[{id:'battery',question:'Which battery?'}]});};c.admit=()=>{admitted=true;throw Error('must not admit');};
  const result=await runStagedGeneration(c);assert.equal(result.status,'questions');assert.deepEqual(c.calls,['readiness']);assert.equal(admitted,false);assert.deepEqual(result.spec.parts,[]);

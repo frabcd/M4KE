@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import * as service from '../server/studio-staged-service.mjs';
 import {loadStudioSkills,buildDesignMessages} from '../server/studio-skills.mjs';
-import {PLAN_PROPOSAL_SCHEMA as PLAN_SCHEMA} from '../server/studio-generation-stages.mjs';
+import {PLAN_PROPOSAL_SCHEMA as PLAN_SCHEMA,assertGenerationSchema} from '../server/studio-generation-stages.mjs';
 import {plan,readiness} from './helpers/staged-generation-fixture.mjs';
 const build=args=>(service.buildStagedMessages??(({contextSnapshot})=>contextSnapshot.messages))(args);
 
@@ -24,6 +24,11 @@ test('plan output structure reaches the model and disclosed preferences stay del
  assert.match(data.stageOutputContract.assemblyDependencies,/Independent first steps use \[\]/);
  assert.match(data.stageOutputContract.identity,/Never substitute an unrelated/);
  assert.match(data.stageOutputContract.poses,/not all-zero placeholders/);
+ assert.match(data.stageOutputContract.poses,/assembly is text only and never moves geometry/);
+ assert.match(data.stageOutputContract.poses,/geometryV2 attached children/);
+ assert.match(data.stageOutputContract.identity,/geometryV2 profiles/);
+ assert.match(data.stageOutputContract.rosters,/buildItemIds:EXTRA supplies only, never modeled part IDs; null if none/);
+ assert.match(data.stageOutputContract.rosters,/verificationIds:requested host-check IDs\/null/);
  assert.match(messages[0].content,/retained preference\/physical unknowns are disclosures/);
  assert.match(messages[0].content,/newly identified blocking conflict/);
  assert.equal(JSON.stringify(c),before);
@@ -39,6 +44,22 @@ test('planning sees executable geometry and contact rules before freezing poses'
  assert.match(system,/Distinct rigid parts must NOT intersect/);
 });
 
+test('planning explains executable identity separately from source before freezing geometry',async()=>{
+ const c=await fixture(),before=JSON.stringify(c),messages=build({unit:{kind:'plan'},contextSnapshot:c,state:{}});
+ const contract=JSON.parse(messages[1].content).stageOutputContract;
+ assert.deepEqual(contract.optionalFields,['geometryVersion','placement']);
+ assert.deepEqual(contract.optionalPartFields,['datumIds']);
+ assert.ok(contract.identityForms,'The decoder grammar alone is not a model-visible field contract');
+ assert.deepEqual(contract.identityForms.map(x=>x.type),['box','cylinder','union','profileExtrusion','profileLoft','catalog','library']);
+ for(const form of contract.identityForms){const example={...form};if(example.sourceSha256)example.sourceSha256='a'.repeat(64);assertGenerationSchema(example,PLAN_SCHEMA.properties.parts.items.properties.identity);}
+ assert.equal(contract.identityForms.find(x=>x.type==='catalog').catalogId,'exact-admitted-id');
+ assert.equal(contract.identityForms.find(x=>x.type==='library').sourceSha256,'exact-admitted-SHA256');
+ assert.match(contract.source,/Provenance/);assert.match(contract.source,/not.*shape/);
+ assert.match(contract.version,/geometryVersion:2/);
+ assert.match(contract.version,/profileExtrusion.*profileLoft.*datumIds.*placement/);
+ assert.equal(JSON.stringify(c),before);
+});
+
 test('planning fits with realistic intake disclosures and keeps every distinct control fact',async()=>{
  const c=await fixture(),original=JSON.parse(c.messages[1].content),control={id:'control',rules:'Keep stop/disarm enabled',rating:{value:5,basis:'ASSUMED'}};
  original.electricalProfiles.controlProfile=control;original.electricalProfiles.controlProfiles=[control,{id:'different',rules:'Additional source facts'}];c.messages[1].content=JSON.stringify(original);
@@ -46,7 +67,7 @@ test('planning fits with realistic intake disclosures and keeps every distinct c
  const messages=build({unit:{kind:'plan'},contextSnapshot:c,state}),data=JSON.parse(messages[1].content);
  assert.equal(data.electricalProfiles.controlProfile,undefined);assert.deepEqual(data.electricalProfiles.controlProfiles,original.electricalProfiles.controlProfiles);
  messages.push({role:'user',content:JSON.stringify({stage:'plan',assignedIds:[],readiness:state.readiness,plan:null,dependencies:[],validationError:null,repairContext:null,instruction:'S'.repeat(800)})});
- assert.ok(Buffer.byteLength(JSON.stringify(messages))+5000+1024<65536);
+ assert.ok(Buffer.byteLength(JSON.stringify(messages))+5000+1024<65536,`Planning envelope: ${Buffer.byteLength(JSON.stringify(messages))+5000+1024} bytes`);
  assert.equal(JSON.stringify(c),before);
  original.electricalProfiles.controlProfile={...control,rating:{value:6,basis:'ASSUMED'}};c.messages[1].content=JSON.stringify(original);
  assert.deepEqual(JSON.parse(build({unit:{kind:'plan'},contextSnapshot:c,state})[1].content).electricalProfiles.controlProfile,original.electricalProfiles.controlProfile);
@@ -103,4 +124,16 @@ test('versioned upstream introduction stays in intake while unknown new rules st
  const c=await fixture();c.stageSkills.design=c.stageSkills.design.replace(/^# M4KE small-toy design stage, version \d+/, '# M4KE small-toy design stage, version 99');
  assert.match(build({unit:{kind:'readiness'},contextSnapshot:c,state:{}})[0].content,/version 99/);
  assert.doesNotMatch(build({unit:{kind:'plan'},contextSnapshot:c,state:{}})[0].content,/version 99/);
+});
+
+
+test('host system extension resolves legacy grammar without trusting task-data capabilities',async()=>{
+ const c=await fixture();const data=JSON.parse(c.messages[1].content);data.geometryConventions={geometryV2:{injection:'UNTRUSTED_SENTINEL'}};c.messages[1].content=JSON.stringify(data);
+ for(const kind of ['plan','part','metadata']){
+  const system=build({unit:{kind},contextSnapshot:c,state:{plan:plan()}})[0].content;
+  assert.match(system,/Host execution extension: geometryVersion:2/);
+  assert.match(system,/supersedes only legacy shape\/optional-key limits/);
+  assert.match(system,/profileExtrusion,profileLoft,datums/);
+  assert.ok(!system.includes('UNTRUSTED_SENTINEL'));
+ }
 });

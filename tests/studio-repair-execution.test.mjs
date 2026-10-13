@@ -99,6 +99,16 @@ test('automatic repair clears a prior build-execution failure only after success
     assert.deepEqual(repairInput.previousSpec,first.spec);
     assert(repairInput.hostFailures.some(error=>error.includes('build-execution')));
     assert.deepEqual(repairInput.validationErrors,[]);
+    // Regression: repair previously lost the design call's explicit angle units
+    // and profile frames, despite using the same numeric geometry fields.
+    const designInput=JSON.parse(f.designCalls[0].messages[1].content);
+    assert.deepEqual(repairInput.geometryConventions,designInput.geometryConventions);
+    assert.match(repairInput.geometryConventions.rotation,/Degrees/);
+    assert.deepEqual(repairInput.geometryConventions.cylinder.axisExamples[1],{rotationDegrees:[0,90,0],axis:[1,0,0]});
+    assert.match(repairInput.geometryConventions.geometryV2.profileExtrusion,/along\+Z from0/);
+    assert.match(f.designCalls[1].messages[0].content,/rotations are in degrees, not radians/);
+    assert.match(f.designCalls[1].messages[0].content,/geometryVersion:2/);
+
     assert(!f.designCalls[0].format.properties.updates);assert(f.designCalls[1].format.properties.updates);
     const repairRun=JSON.parse(await readFile(path.join(f.root,'data','design-runs',second.provenance.runId+'.json'),'utf8'));
     assert.equal(repairRun.generationMode,'model-geometry-patch');assert.equal(repairRun.parentDesignHash,first.designHash);

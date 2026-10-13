@@ -2,8 +2,8 @@ import {validateDesignSpec,designHash} from './studio-contract.mjs';
 import {validateRepair} from './studio-repair.mjs';
 import {OLLAMA_DESIGN_SCHEMA} from './studio-schema.mjs';
 
-const PRINTED=['position','rotation','fillet','holes','pockets','shape'];
-const PURCHASED=['position','rotation'];
+const PRINTED=['position','rotation','fillet','holes','pockets','shape','datums'];
+const PURCHASED=['position','rotation','datums'];
 const fail=message=>{throw Object.assign(new Error(message),{status:422});};
 function object(value,allowed,label){
   if(!value||typeof value!=='object'||Array.isArray(value)||![Object.prototype,null].includes(Object.getPrototypeOf(value)))fail(`${label}: expected a plain JSON object.`);
@@ -33,8 +33,8 @@ export function buildModelRepairSchema(input){
     // may be repaired, just like a purchased source. Never propose a replacement primitive.
     const ids=spec.parts.filter(part=>kind==='purchased'?(part.kind==='purchased'||part.shape.type==='library'):(part.kind===kind&&part.shape.type!=='library')).map(part=>part.id);
     if(!ids.length)continue;
-    const fields=Object.fromEntries(allowed.map(key=>[key,structuredClone(properties[key])]));
-    if(fields.shape)fields.shape.anyOf=fields.shape.anyOf.filter(option=>!option.properties.type.enum.some(type=>['catalog','library'].includes(type)));
+    const fields=Object.fromEntries(allowed.filter(key=>key!=='datums'||spec.geometryVersion===2).map(key=>[key,structuredClone(properties[key])]));
+    if(fields.shape)fields.shape.anyOf=fields.shape.anyOf.filter(option=>!option.properties.type.enum.some(type=>['catalog','library',...(spec.geometryVersion===2?[]:['profileExtrusion','profileLoft'])].includes(type)));
     variants.push(schemaObject({partId:{type:'string',enum:ids},changes:{...schemaObject(fields,[]),minProperties:1}}));
   }
   const assemblyProperties=OLLAMA_DESIGN_SCHEMA.properties.assembly.items.properties;
