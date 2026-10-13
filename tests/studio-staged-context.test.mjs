@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import * as service from '../server/studio-staged-service.mjs';
 import {loadStudioSkills,buildDesignMessages} from '../server/studio-skills.mjs';
-import {PLAN_PROPOSAL_SCHEMA as PLAN_SCHEMA} from '../server/studio-generation-stages.mjs';
+import {PLAN_PROPOSAL_SCHEMA as PLAN_SCHEMA,assertGenerationSchema} from '../server/studio-generation-stages.mjs';
 import {plan,readiness} from './helpers/staged-generation-fixture.mjs';
 const build=args=>(service.buildStagedMessages??(({contextSnapshot})=>contextSnapshot.messages))(args);
 
@@ -39,6 +39,22 @@ test('planning sees executable geometry and contact rules before freezing poses'
  }
  assert.match(system,/unrotated cylinder's axis is Z/);
  assert.match(system,/Distinct rigid parts must NOT intersect/);
+});
+
+test('planning explains executable identity separately from source before freezing geometry',async()=>{
+ const c=await fixture(),before=JSON.stringify(c),messages=build({unit:{kind:'plan'},contextSnapshot:c,state:{}});
+ const contract=JSON.parse(messages[1].content).stageOutputContract;
+ assert.deepEqual(contract.optionalFields,['geometryVersion','placement']);
+ assert.deepEqual(contract.optionalPartFields,['datumIds']);
+ assert.ok(contract.identityForms,'The decoder grammar alone is not a model-visible field contract');
+ assert.deepEqual(contract.identityForms.map(x=>x.type),['box','cylinder','union','profileExtrusion','profileLoft','catalog','library']);
+ for(const form of contract.identityForms){const example={...form};if(example.sourceSha256)example.sourceSha256='a'.repeat(64);assertGenerationSchema(example,PLAN_SCHEMA.properties.parts.items.properties.identity);}
+ assert.equal(contract.identityForms.find(x=>x.type==='catalog').catalogId,'exact-admitted-id');
+ assert.equal(contract.identityForms.find(x=>x.type==='library').sourceSha256,'exact-admitted-SHA256');
+ assert.match(contract.source,/Provenance/);assert.match(contract.source,/not.*shape/);
+ assert.match(contract.version,/geometryVersion:2/);
+ assert.match(contract.version,/profileExtrusion.*profileLoft.*datumIds.*placement/);
+ assert.equal(JSON.stringify(c),before);
 });
 
 test('planning fits with realistic intake disclosures and keeps every distinct control fact',async()=>{
