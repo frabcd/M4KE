@@ -65,6 +65,12 @@ test('planning diagnostics identify uncovered parts and colliding supply IDs for
  p.assembly[0].partIds.push('p1');p.buildItems=['p1'];
  assert.throws(()=>validateGenerationPlan(p,{readiness:readiness()}),/collides with part: p1/);
 });
+test('planning retry names the exact invalid assembly reference and its namespace',()=>{
+ const p=plan(2);p.assembly[0].partIds.push('wire-harness');
+ assert.throws(()=>validateGenerationPlan(p,{readiness:readiness()}),e=>e.message.includes('assembly inspect.partIds')&&e.message.includes('wire-harness')&&e.message.includes('parts[].id'));
+ p.assembly[0].partIds.pop();p.assembly[0].requires=['p0'];
+ assert.throws(()=>validateGenerationPlan(p,{readiness:readiness()}),e=>e.message.includes('assembly inspect.requires')&&e.message.includes('p0')&&e.message.includes('assembly[].id'));
+});
 test('planning can disclose new assumptions and unknowns without erasing intake evidence',()=>{
   const ready={...readiness(),assumptions:['User delegated reversible material choice'],unknowns:['Physical fit has not been tested']};
   const p={...plan(),assumptions:[...ready.assumptions,'MODEL_ASSUMED prototype material'],unknowns:[...ready.unknowns,'Newly discovered interface measurement missing']};

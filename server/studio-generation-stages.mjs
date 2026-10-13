@@ -99,19 +99,19 @@ export function validateGenerationPlan(raw,{readiness,sources={catalogIds:[],lib
     if(part.identity.type==='library'&&!sources.libraryHashes.includes(part.identity.sourceSha256))fail('unadmitted library identity');
     if(part.identity.type==='union'&&part.kind!=='printed')fail('union must be printed');
   }
-  const refs=(xs,set)=>{unique(xs);if(xs.some(x=>!set.has(x)))fail('unknown reference');};
-  for(const s of p.assembly){refs(s.partIds,ids);refs(s.requires,steps);}
+  const refs=(xs,set,field,namespace)=>{unique(xs);const missing=xs.filter(x=>!set.has(x));if(missing.length)fail('unknown reference in '+field+': '+missing.slice(0,8).join(', ')+'. References must use '+namespace+' from this plan.');};
+  for(const s of p.assembly){refs(s.partIds,ids,'assembly '+s.id+'.partIds','parts[].id');refs(s.requires,steps,'assembly '+s.id+'.requires','assembly[].id');}
   const visited=new Set(),active=new Set();function visit(id){if(active.has(id))fail('assembly cycle');if(visited.has(id))return;active.add(id);p.assembly.find(s=>s.id===id).requires.forEach(visit);active.delete(id);visited.add(id);}steps.forEach(visit);
   const uncovered=p.parts.filter(part=>!p.assembly.some(s=>s.partIds.includes(part.id))).map(part=>part.id);
   if(uncovered.length)fail('assembly coverage: missing part IDs '+uncovered.join(', ')+'. Include every listed part in an assembly step.');
-  if(p.electrical){const selected=new Set(p.electrical.components.map(c=>c.partId));refs([...p.electrical.components.map(c=>c.partId)],ids);unique(p.electrical.connections.map(c=>c.id));
+  if(p.electrical){const selected=new Set(p.electrical.components.map(c=>c.partId));refs([...p.electrical.components.map(c=>c.partId)],ids,'electrical.components[].partId','parts[].id');unique(p.electrical.connections.map(c=>c.id));
     for(const component of p.electrical.components){
       const part=p.parts.find(part=>part.id===component.partId),profile=profileById(component.profileId);
       if(part.kind!=='purchased')fail('electrical component must be purchased: '+part.id);
       if(profile&&part.identity.type==='catalog'&&profile.catalogId!==part.identity.catalogId)fail('electrical/CAD identity conflict: '+part.id+' profile '+profile.id+' cannot use '+part.identity.catalogId+'; use its exact source or an assumed envelope');
     }
     for(const c of p.electrical.connections){
-      if(!selected.has(c.from.partId)||!selected.has(c.to.partId))fail('connection reference');
+      for(const key of ['from','to'])if(!selected.has(c[key].partId))fail('connection reference in '+c.id+'.'+key+'.partId: '+c[key].partId+'. Use a part with a selected electrical profile.');
       for(const end of [c.from,c.to]){const profile=profileById(p.electrical.components.find(component=>component.partId===end.partId).profileId);if(profile&&!profile.terminals.some(t=>t.id===end.terminal))fail('unknown profile terminal: '+end.partId+':'+end.terminal+' for '+profile.id+'. Allowed: '+profile.terminals.map(t=>t.id).join(', ')+'. Use the selected profile roles; input-only ADC pins cannot drive outputs.');}
     }}
   for(const k of ['buildItems','verificationRequests'])if(p[k])unique(p[k]);
