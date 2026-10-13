@@ -71,6 +71,10 @@ test('planning retry names the exact invalid assembly reference and its namespac
  p.assembly[0].partIds.pop();p.assembly[0].requires=['p0'];
  assert.throws(()=>validateGenerationPlan(p,{readiness:readiness()}),e=>e.message.includes('assembly inspect.requires')&&e.message.includes('p0')&&e.message.includes('assembly[].id'));
 });
+test('one bounded planning retry receives simultaneous roster defects',()=>{
+ const p=plan(2);p.assembly[0].partIds=['p0','wire-harness'];p.buildItems=['p0'];
+ assert.throws(()=>validateGenerationPlan(p,{readiness:readiness()}),e=>e.message.includes('wire-harness')&&e.message.includes('missing part IDs p1')&&e.message.includes('collides with part: p0')&&e.message.length<1000);
+});
 test('planning can disclose new assumptions and unknowns without erasing intake evidence',()=>{
   const ready={...readiness(),assumptions:['User delegated reversible material choice'],unknowns:['Physical fit has not been tested']};
   const p={...plan(),assumptions:[...ready.assumptions,'MODEL_ASSUMED prototype material'],unknowns:[...ready.unknowns,'Newly discovered interface measurement missing']};

@@ -99,11 +99,17 @@ export function validateGenerationPlan(raw,{readiness,sources={catalogIds:[],lib
     if(part.identity.type==='library'&&!sources.libraryHashes.includes(part.identity.sourceSha256))fail('unadmitted library identity');
     if(part.identity.type==='union'&&part.kind!=='printed')fail('union must be printed');
   }
-  const refs=(xs,set,field,namespace)=>{unique(xs);const missing=xs.filter(x=>!set.has(x));if(missing.length)fail('unknown reference in '+field+': '+missing.slice(0,8).join(', ')+'. References must use '+namespace+' from this plan.');};
-  for(const s of p.assembly){refs(s.partIds,ids,'assembly '+s.id+'.partIds','parts[].id');refs(s.requires,steps,'assembly '+s.id+'.requires','assembly[].id');}
-  const visited=new Set(),active=new Set();function visit(id){if(active.has(id))fail('assembly cycle');if(visited.has(id))return;active.add(id);p.assembly.find(s=>s.id===id).requires.forEach(visit);active.delete(id);visited.add(id);}steps.forEach(visit);
+  const refs=(xs,set,field,namespace,issues=null)=>{unique(xs);const missing=xs.filter(x=>!set.has(x));if(missing.length){const message='unknown reference in '+field+': '+missing.slice(0,8).join(', ')+'. References must use '+namespace+' from this plan.';if(issues)issues.push(message);else fail(message);}};
+  // Independent roster errors can coexist. Report them together so the one
+  // remaining planning attempt can repair more than the first observed defect.
+  const rosterIssues=[];
+  for(const s of p.assembly){refs(s.partIds,ids,'assembly '+s.id+'.partIds','parts[].id',rosterIssues);refs(s.requires,steps,'assembly '+s.id+'.requires','assembly[].id',rosterIssues);}
   const uncovered=p.parts.filter(part=>!p.assembly.some(s=>s.partIds.includes(part.id))).map(part=>part.id);
-  if(uncovered.length)fail('assembly coverage: missing part IDs '+uncovered.join(', ')+'. Include every listed part in an assembly step.');
+  if(uncovered.length)rosterIssues.push('assembly coverage: missing part IDs '+uncovered.join(', ')+'. Include every listed part in an assembly step.');
+  const collided=p.buildItems?.filter(x=>ids.has(x));
+  if(collided?.length)rosterIssues.push('build item collides with part: '+collided.join(', ')+'. Extra supply IDs must differ from part IDs.');
+  if(rosterIssues.length)fail(rosterIssues.join('; '));
+  const visited=new Set(),active=new Set();function visit(id){if(active.has(id))fail('assembly cycle');if(visited.has(id))return;active.add(id);p.assembly.find(s=>s.id===id).requires.forEach(visit);active.delete(id);visited.add(id);}steps.forEach(visit);
   if(p.electrical){const selected=new Set(p.electrical.components.map(c=>c.partId));refs([...p.electrical.components.map(c=>c.partId)],ids,'electrical.components[].partId','parts[].id');unique(p.electrical.connections.map(c=>c.id));
     for(const component of p.electrical.components){
       const part=p.parts.find(part=>part.id===component.partId),profile=profileById(component.profileId);
@@ -115,8 +121,7 @@ export function validateGenerationPlan(raw,{readiness,sources={catalogIds:[],lib
       for(const end of [c.from,c.to]){const profile=profileById(p.electrical.components.find(component=>component.partId===end.partId).profileId);if(profile&&!profile.terminals.some(t=>t.id===end.terminal))fail('unknown profile terminal: '+end.partId+':'+end.terminal+' for '+profile.id+'. Allowed: '+profile.terminals.map(t=>t.id).join(', ')+'. Use the selected profile roles; input-only ADC pins cannot drive outputs.');}
     }}
   for(const k of ['buildItems','verificationRequests'])if(p[k])unique(p[k]);
-  const collided=p.buildItems?.filter(x=>ids.has(x));
-  if(collided?.length)fail('build item collides with part: '+collided.join(', ')+'. Extra supply IDs must differ from part IDs.');return p;
+  return p;
 }
 export function partitionGeneration(p){
   const units=[];
