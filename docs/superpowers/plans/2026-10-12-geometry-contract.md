@@ -71,3 +71,9 @@
 - Next: inspect actual model, native and visual evidence. This remains a test hypothesis, not an airplane acceptance claim. No teammate work or production changes.
 
 - 2026-10-13 bounded follow-up: user authorized cycles only until unchanged18:34Singapore cutoff. Field-semantics clarification tested; native CAD now reached but failed overlap and visual acceptance. Applied inspect-3d principle using exact hash-verified native STL and production viewport (5/5 loaded), not narrative. Systematic-debugging architectural review: immutable weak planning propagates into parts/metadata and cannot be repaired by assembly prose. Separate per-stage thinking experiment is isolated/unpublished; no product design edits or relaxed checks. Source683PASS21SKIP; independent16contextPASS/nonplan byte equality. Next: collect experiment outcome, preserve diagnostics, stop own workers at deadline and hand upstream concrete planning findings.
+
+
+## 2026-10-13 test-path correction
+- Earliest unfinished step is verification of the existing automatic native repair path. The private test used design mode plus a separate build, bypassing runWorkflow's native-check/patch/rebuild loop. Preserve failed initial geometry evidence; defer new layout architecture until the existing path is exercised.
+- Applied conductor routing, systematic-debugging source tracing, TDD for benchmark receipt/mode regressions, and inspect-3d's distinction between artifact availability and revision-bound verification. Independent review added verification.revisionHash binding.
+- Local private supervisor prepared for explicit auto mode; no separate build, no launch, original receipts preserved. User's previous 18:34 Singapore cutoff remains expired. Next live test requires a new approved window and teammate slot release.
