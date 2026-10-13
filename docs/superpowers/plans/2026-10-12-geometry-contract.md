@@ -40,3 +40,12 @@
 - Deferred review minors: profile dimensions are blank in the Inspector formatter; the verification panel's generic grammar-limitation sentence still lists only the old shapes. No geometry acceptance was inferred from either display.
 - Ruling: preserve a separate draft contribution stacked on PR14; do not expand PR14, merge or deploy. The tradeoff is another dependent PR before production rollout.
 - Unverified: actual upstream-model use, fresh airplane generation, new-profile browser visual review, physical fit/strength/printing, and unavailable supplier-CAD catalog suites. No success claim for those domains.
+
+## 2026-10-13 upstream integration
+- User approved continuing after checking teammate work. Reuse existing isolated worktree on new branch codex/geometry-quality-integration; preserve both published PR branches. Merge exact PR15 374e828 into PR16 e30a403 locally, no production deployment or GPU claim.
+- Reproduced integration defects: proposal builder made optional v2 fields mandatory; source/context fixture overflow; host pose guidance contradicted attachment placeholders. Added proposal/guide regressions and preserved upstream source/profile binding, measured progress, retries and immutable intake reconstruction.
+- Fixed required-field lists by inheriting explicit parent requirements; compacted only host-authored capability explanations. Source facts, upstream skill text and prompt budget unchanged. Focused62PASS with normal Windows filesystem permissions (sandbox rename failures recorded separately).
+- Skills: conductor; executing-plans inline; using-git-worktrees confirmed existing isolation; inspect-3d retains actual-native/preview evidence boundary; TDD watched failing compatibility regressions before fix.
+- Next: full source/build/native regressions and final independent review, then publish reviewable integration and coordinate actual-model retest. This is not end-to-end acceptance.
+
+- Integration final review: fixed system-level legacy grammar contradiction and datum decoder omissions with failing/passing regressions. Fixed host-only capability text never promotes task data to instructions. Added guidance source to checkpoint identity. Full677PASS/21SKIP; native7PASS; focused64PASS; after hash hardening34PASS; syntax228/buildPASS. Actual model test remains pending free coordinated GPU. See verification/2026-10-13-geometry-quality-integration.md.

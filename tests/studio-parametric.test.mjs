@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {validateDesignSpec,designHash,verifyDesign} from '../server/studio-contract.mjs';
 import {validateRepair} from '../server/studio-repair.mjs';
 import {buildModelRepairSchema,applyModelRepair} from '../server/studio-model-repair.mjs';
-import {validateGenerationPlan,partitionGeneration,assembleGeneration,validateGenerationUnit} from '../server/studio-generation-stages.mjs';
-import {plan,readiness,payload} from './helpers/staged-generation-fixture.mjs';
+import {schemaForGenerationUnit,assertGenerationSchema,validateGenerationProposal,validateGenerationPlan,partitionGeneration,assembleGeneration,validateGenerationUnit} from '../server/studio-generation-stages.mjs';
+import {plan,proposal,readiness,payload} from './helpers/staged-generation-fixture.mjs';
 import {Euler,Matrix4} from 'three';
 
 const frame=(id,position=[0,0,0],rotation=[0,0,0])=>({id,position,rotation});
@@ -96,4 +96,29 @@ test('staged v2 preserves declared topology but obtains datum coordinates from t
  for(const u of partitionGeneration(checked)){const v=payload(checked,u);if(u.kind==='part')for(const part of v.items){part.datums=[frame(part.id==='p0'?'top':'bottom',part.id==='p0'?[0,0,5]:[0,0,0])];if(part.id==='p1')part.shape=parametricFixture().parts[1].shape;}
    records.push({key:u.key,status:'UNIT_VALIDATED',payload:validateGenerationUnit(checked,u,v,records)});}
  const spec=validateDesignSpec(assembleGeneration(checked,records));assert.deepEqual(spec.parts[1].position,[0,0,5]);assert.equal(spec.geometryVersion,2);
+});
+
+
+test('proposal integration keeps geometry extensions optional for legacy plans',()=>{
+ const p=plan();const r=readiness();const raw=proposal(p,r);
+ assert.deepEqual(validateGenerationProposal(raw,{readiness:r}),p);
+});
+
+test('proposal integration carries v2 topology and optional datum rosters into geometry stages',()=>{
+ const p=plan(2);p.geometryVersion=2;p.placement=parametricFixture().placement;
+ p.placement.roots[0].partId='p0';Object.assign(p.placement.attachments[0],{parentId:'p0',childId:'p1'});
+ p.parts[0].datumIds=['top'];p.parts[1].datumIds=['bottom'];p.parts[1].identity={type:'profileExtrusion'};
+ assert.deepEqual(validateGenerationProposal(proposal(p),{readiness:readiness()}),p);
+ const noAttachment=plan();noAttachment.geometryVersion=2;noAttachment.parts[0].identity={type:'profileLoft'};
+ assert.deepEqual(validateGenerationProposal(proposal(noAttachment),{readiness:readiness()}),noAttachment);
+});
+
+
+test('part decoder requires exactly the planned datum count and names',()=>{
+ const p=plan();p.geometryVersion=2;p.parts[0].datumIds=['top','side'];const u=partitionGeneration(p)[0],schema=schemaForGenerationUnit(p,u),v=payload(p,u);
+ assert.throws(()=>assertGenerationSchema(v,schema));
+ v.items[0].datums=[frame('top'),frame('side')];assert.doesNotThrow(()=>assertGenerationSchema(v,schema));
+ v.items[0].datums[1].id='invented';assert.throws(()=>assertGenerationSchema(v,schema));
+ v.items[0].datums=[frame('top')];assert.throws(()=>assertGenerationSchema(v,schema));
+ const old=plan(),legacy=schemaForGenerationUnit(old,partitionGeneration(old)[0]);assert.throws(()=>assertGenerationSchema({...v,items:[{...v.items[0],datums:[frame('extra')]}]},legacy));
 });
