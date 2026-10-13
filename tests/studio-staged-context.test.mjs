@@ -24,8 +24,11 @@ test('plan output structure reaches the model and disclosed preferences stay del
  assert.match(data.stageOutputContract.assemblyDependencies,/Independent first steps use \[\]/);
  assert.match(data.stageOutputContract.identity,/Never substitute an unrelated/);
  assert.match(data.stageOutputContract.poses,/not all-zero placeholders/);
+ assert.match(data.stageOutputContract.poses,/assembly is text only and never moves geometry/);
  assert.match(data.stageOutputContract.poses,/geometryV2 attached children/);
  assert.match(data.stageOutputContract.identity,/geometryV2 profiles/);
+ assert.match(data.stageOutputContract.rosters,/buildItemIds:EXTRA supplies only, never modeled part IDs; null if none/);
+ assert.match(data.stageOutputContract.rosters,/verificationIds:requested host-check IDs\/null/);
  assert.match(messages[0].content,/retained preference\/physical unknowns are disclosures/);
  assert.match(messages[0].content,/newly identified blocking conflict/);
  assert.equal(JSON.stringify(c),before);
