@@ -1,19 +1,31 @@
 import {performance} from 'node:perf_hooks';
 import {parseGenerationJson} from './studio-generation-json.mjs';
-import {READINESS_SCHEMA,QUESTIONS_SCHEMA,PLAN_SCHEMA,validateReadiness,validateGenerationPlan,partitionGeneration,schemaForGenerationUnit,validateGenerationUnit,assembleGeneration,dependentUnitKeys} from './studio-generation-stages.mjs';
+import {READINESS_SCHEMA,QUESTIONS_SCHEMA,planProposalSchema,validateReadiness,validateGenerationProposal,partitionGeneration,schemaForGenerationUnit,validateGenerationUnit,assembleGeneration,dependentUnitKeys} from './studio-generation-stages.mjs';
 import {descriptorFor,dependencyHashes,canResumeGeneration} from './studio-generation-checkpoints.mjs';
 
-const special=key=>({key,kind:key,ids:[],dependsOn:[],tokenLimit:key==='readiness'?1500:4000,timeoutMs:key==='readiness'?180000:300000});
+const special=key=>({key,kind:key,ids:[],dependsOn:[],tokenLimit:key==='readiness'?1500:5000,timeoutMs:key==='readiness'?180000:300000});
 function stopped(message,canResume=false){return Object.assign(new Error(message),{canResume});}
 function questionsSpec(r){return {schemaVersion:1,title:'Clarification required',description:'Essential inputs are needed before proceeding.',units:'mm',requirements:r.requirements,assumptions:r.assumptions,unknowns:r.unknowns,questions:r.questions,parts:[],assembly:[]};}
+
+// Reserved timeout is a conservative durable debit, never an observation.
+// An orphaned request after restart has no measured duration: omit elapsed time.
+export function measuredGenerationElapsed(reservations,activeId=null,activeMs=0){
+ let total=0;
+ for(const r of reservations){
+  if(r.elapsedMs!==null)total+=r.elapsedMs;
+  else if(r.id===activeId)total+=Math.min(r.timeoutMs,Math.max(0,activeMs));
+  else return undefined;
+ }
+ return total;
+}
 
 /** No CAD/price side effects here. Only a fully admitted result may leave this runner. */
 export async function runStagedGeneration({identity,contextSnapshot,store,infer,buildMessages,admit,signal,onProgress=()=>{},resumeGenerationId}){
   signal?.throwIfAborted();
   const args={projectId:identity.identity.projectId,identity},h=resumeGenerationId?await store.load({...args,generationId:resumeGenerationId}):await store.create({...args,contextSnapshot});
   if(['accepted','questions','exhausted'].includes(h.snapshot().status))throw stopped('Generation is terminal; start a new generation explicitly.');
-  const reused=new Set(h.snapshot().units.map(r=>r.key));let current='readiness',lateQuestions=null;
-  const progress=async(stage,extra={})=>{const s=h.snapshot();await onProgress({generationId:h.id,stage,unitKey:current,declaredUnits:s.plan?partitionGeneration(s.plan).length:0,validatedUnits:s.units.filter(r=>!r.descriptor.parentKey).length,reusedUnits:s.units.filter(r=>reused.has(r.key)&&!r.descriptor.parentKey).length,remaining:h.remaining(),elapsedMs:2400000-h.remaining().activeMs,...extra});};
+  const reused=new Set(h.snapshot().units.map(r=>r.key));let current='readiness',lateQuestions=null,activeTiming=null;
+  const progress=async(stage,extra={})=>{const s=h.snapshot(),elapsedMs=measuredGenerationElapsed(s.reservations,activeTiming?.id,activeTiming?performance.now()-activeTiming.start:0);await onProgress({generationId:h.id,stage,unitKey:current,declaredUnits:s.plan?partitionGeneration(s.plan).length:0,validatedUnits:s.units.filter(r=>!r.descriptor.parentKey).length,reusedUnits:s.units.filter(r=>reused.has(r.key)&&!r.descriptor.parentKey).length,remaining:h.remaining(),...elapsedMs===undefined?{}:{elapsedMs},...extra});};
   const remainingAttempts=key=>{const s=h.snapshot();return (key.includes('~')?1:2)-s.reservations.filter(r=>r.unitKey===key&&r.round===s.repairRounds).length;};
   async function request(unit,schema,validate,diagnostic=null){
     current=unit.key;signal?.throwIfAborted();
@@ -23,24 +35,25 @@ export async function runStagedGeneration({identity,contextSnapshot,store,infer,
     if(Buffer.byteLength(JSON.stringify(messages),'utf8')+unit.tokenLimit+1024>65536)throw stopped('Generation context exceeds the bounded context window.');
     const reservation=await h.reserve({unitKey:unit.key,tokenLimit:unit.tokenLimit,timeoutMs:unit.timeoutMs});
     const timeout=AbortSignal.timeout(reservation.timeoutMs),combined=signal?AbortSignal.any([signal,timeout]):timeout,start=performance.now();let settled=false;
+    activeTiming={id:reservation.reservationId,start};
     try{
-      await progress(unit.kind,{attempt:3-remainingAttempts(unit.key)});combined.throwIfAborted();
+      await progress(unit.kind,{attempt:(unit.key.includes('~')?1:2)-remainingAttempts(unit.key)});combined.throwIfAborted();
       const response=await infer({unit,schema:unit.key==='readiness'?schema:{anyOf:[schema,QUESTIONS_SCHEMA]},messages,config:{numPredict:unit.tokenLimit,timeoutMs:reservation.timeoutMs,numCtx:65536},signal:combined,onProgress:()=>{}});
       combined.throwIfAborted();
-      const outcome=response.doneReason==='length'?'length':'stop';await h.settle(reservation.reservationId,{elapsedMs:performance.now()-start,outcome,evalCount:response.metrics?.evalCount??null,promptEvalCount:response.metrics?.promptEvalCount??null});settled=true;
-      if(outcome==='length')throw Object.assign(stopped('Truncated unit '+unit.key),{truncated:true});
+      const outcome=response.doneReason==='length'?'length':'stop';await h.settle(reservation.reservationId,{elapsedMs:performance.now()-start,outcome,evalCount:response.metrics?.evalCount??null,promptEvalCount:response.metrics?.promptEvalCount??null});settled=true;activeTiming=null;
+      if(outcome==='length')throw Object.assign(stopped('Truncated unit '+unit.key,unit.kind==='plan'&&remainingAttempts(unit.key)>0),{truncated:true});
       const raw=parseGenerationJson(response.content);
       if(raw?.status==='questions'){lateQuestions=validateReadiness(raw);throw Object.assign(stopped('Essential clarification required'),{questions:true});}
       return validate(raw);
     }catch(error){
-      if(!settled){await h.settle(reservation.reservationId,{elapsedMs:performance.now()-start,outcome:combined.aborted?'cancelled':'error'});throw Object.assign(error,{canResume:remainingAttempts(unit.key)>0,transport:true});}
+      if(!settled){await h.settle(reservation.reservationId,{elapsedMs:performance.now()-start,outcome:combined.aborted?'cancelled':'error'});activeTiming=null;throw Object.assign(error,{canResume:remainingAttempts(unit.key)>0,transport:true});}
       throw error;
     }
   }
   async function validatedRequest(unit,schema,validate){
     let diagnostic=null;
     while(remainingAttempts(unit.key)>0){
-      try{return await request(unit,schema,validate,diagnostic);}catch(e){if(signal?.aborted||e.questions||e.transport||e.truncated||e.canResume===false||e.code==='CHECKPOINT_CONFLICT')throw e;if(remainingAttempts(unit.key)<=0)throw Object.assign(e,{canResume:false});diagnostic=String(e.message).slice(0,1000);await progress('retrying',{message:diagnostic});}
+      try{return await request(unit,schema,validate,diagnostic);}catch(e){if(signal?.aborted||e.questions||e.transport||(e.truncated&&unit.kind!=='plan')||e.canResume===false||e.code==='CHECKPOINT_CONFLICT')throw e;if(remainingAttempts(unit.key)<=0)throw Object.assign(e,{canResume:false});diagnostic=e.truncated?'Plan exceeded its output limit. Return complete compact JSON: brief interfaceIntent, concise new disclosures, prerequisite IDs only. Do not repeat source data or omit functional hardware/connections. Keep the same request and source facts.':String(e.message).slice(0,1000);await progress('retrying',{message:diagnostic});}
     }
     throw stopped('Retry budget exhausted for '+unit.key);
   }
@@ -61,7 +74,7 @@ export async function runStagedGeneration({identity,contextSnapshot,store,infer,
     if(!h.snapshot().readiness)await h.saveReadiness(await validatedRequest(special('readiness'),READINESS_SCHEMA,validateReadiness));
     const ready=h.snapshot().readiness;
     if(ready.status==='questions'){await h.finish('questions');return {status:'questions',spec:questionsSpec(ready),generationId:h.id,metrics:h.remaining()};}
-    if(!h.snapshot().plan)await h.savePlan(await validatedRequest(special('plan'),PLAN_SCHEMA,v=>validateGenerationPlan(v,{readiness:ready,sources:h.context.sources})));
+    if(!h.snapshot().plan)await h.savePlan(await validatedRequest(special('plan'),planProposalSchema(ready,h.context.sources),v=>validateGenerationProposal(v,{readiness:ready,sources:h.context.sources})));
     const units=partitionGeneration(h.snapshot().plan);
     for(;;){
       for(const u of units)await unit(u);

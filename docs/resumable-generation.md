@@ -84,6 +84,14 @@ directory containing `data/`), accessible on the machine running the collector.
 Supply a JSON file containing the upstream/user's exact `request`, `answers`
 array and `budget` string. No answers are supplied automatically.
 
+For a production-source benchmark, restore the separate approved catalog into the
+isolated app and pass `--expected-catalog-sha256=<manifest SHA256>` from the intended
+source snapshot. A source-only ZIP has an empty catalog and does not represent a
+production hardware inventory. The collector rejects a mismatched manifest before
+creating a project or running inference, and records the matching hash/count in
+`source-preflight.json`. Changing the source snapshot prevents speed comparisons
+with previous trials even when the user brief is identical.
+
 Set `M4KE_BENCH_COORDINATED=1` only after actual coordination, then invoke:
 
 ```text
@@ -129,3 +137,69 @@ Stage prompts route verbatim sections of the loaded upstream design skill instea
 Actual122B follow-up: context fix allowed two real readiness calls (3613/3618 prompt tokens;1105/1075 output tokens). Both stopped normally but violated status/questions consistency and were rejected. Readiness decoder now uses two discriminated alternatives: ready with zero questions, or questions with1–3 questions. The existing host invariant is retained; no status rewriting, discarded questions or forced pass. A decoder-projection regression reproduces the old mismatch and verifies both valid alternatives and both rejected contradictions.
 
 Actual 122B follow-up after the readiness correction: readiness passed, then two planning calls failed host validation with `output: unsupported key status`. The run finished in 112.2 seconds with three model calls and no accepted design. Inspection found that the later-stage decoder allowed the full readiness schema, including `ready`, although the runner accepts only its assigned payload or a late clarification. Later stages now permit only their stage schema or `questions` with 1–3 questions. Regression coverage exercises both host and Ollama-projected contracts across plan, part, metadata and assembly. This latest correction is source-tested, not yet verified by another real-model run. CAD, connected preview, physical fit and pricing remain NOT_TESTED. PR11 remains draft.
+
+Current generation-quality correction: planning emits only choices and bounded
+newAssumptions/newUnknowns. The host copies exact durable intake text into the
+stored plan. Source identities in the decoder come from the frozen admitted
+catalog/library inventory; electrical profile IDs cannot stand in for native CAD.
+Parts keep exact planned identity, pose and source in their assigned decoder.
+Progress reports measured inference time, while durable budget accounting keeps
+conservative reservations. Planning receives the geometry coordinate convention;
+full feature rules reach later geometry stages. Every distinct source/control fact
+remains in the frozen context.
+
+For same-design native/electrical/assembly observation use `--mode=auto`; the default
+`--mode=design` stops at design generation. Neither a generated plan nor a reported
+CAD artifact establishes visual quality or physical operation. Latest isolated
+Linux source regression:655 passed,20 skipped,0 failures. Actual full-catalog car
+trial v3 stopped after300.8s with rejected fabricated catalog identities, before
+CAD. A bounded retest is pending; this is not a five-minute success benchmark.
+
+Planning truncation may consume only its remaining second attempt, using compact
+output guidance. Both attempts keep the4000-token ceiling and shared durable
+budget; a second truncation stops without partial admission. Part split behavior
+is unchanged. Exactly duplicate native-library descriptors may be omitted from
+planning; original bounds/frame and all distinct fields remain, with full original
+records in later stages and the hash-bound checkpoint. Real context replay with
+retry diagnostic fits65094bytes under the unchanged65536-byte guard. Linux source
+regression658 passed,20 skipped,0 failed. End-to-end car acceptance remains pending.
+
+The proposal names its optional ID rosters `buildItemIds` and `verificationIds`
+to distinguish them from detailed final-design objects. The host maps these
+rosters exactly to the unchanged stored-plan contract. Prose checks and duplicate
+part/supply identities still reject. This is a schema-guidance fix, not automatic
+creation of verification criteria or proof of native CAD/physical acceptance.
+
+Staged decoder projection retains a simple ASCII word loop for IDs. The host
+still enforces the64-character limit. This option leaves the legacy projection
+unchanged and does not reintroduce large bounded string/hex grammars. A bounded
+exact122B diagnostic returned a valid ID in14.89s; this measures grammar execution
+only, not car-generation/native/visual acceptance. Actual HTTP fixtures check the
+sent schema, rather than relying only on an isolated projection test.
+
+Proposal parts carry nullable electrical `profileId` alongside their CAD identity.
+Catalog alternatives bind source CAD to the matching electrical profile or null;
+the host reconstructs the unchanged final electrical component roster. Connections
+and control remain model-selected. This removes duplicate part IDs and prevents
+an admitted bracket being proposed as battery electronics. Primitive/library
+geometry still has the existing unqualified-source/engineering boundaries.
+Uncovered assembly diagnostics now identify the exact missing part IDs. Complete
+source regression662 passed,20 skipped;22 browser workflow checks passed with a
+controlled delayed view-state restore. Real car acceptance remains pending.
+
+After actual repeated4000-token car-plan truncations, the planning allowance is
+5000 tokens per attempt. The durable60000-token/64-request/40-minute total remains
+unchanged and reservations cannot be refunded by short output or restart. The
+planning route omits duplicated application REQUEST_GUIDANCE; original request,
+answers, source facts, upstream skill rules and later-stage/host constraints remain.
+The complete-message context test now reserves5000 output tokens plus1024 overhead.
+Current source regression663 passed,20 skipped,0 failed. The car's end-to-end native
+CAD/electrical/assembly/visual acceptance remains pending.
+
+### 2026-10-13: exact terminal vocabulary and immutable wire details
+The real car run V12 completed both planning responses but failed on an unsupported ESP32 IO5 endpoint (389.34 seconds overall; NOT_ACCEPTED). The proposal decoder now admits only terminal spellings from the existing electrical profiles. Cross-part selection is still checked against the actual selected profile before freezing; a mismatch reports that profile and its allowed terminals. This union vocabulary does not prove role or power compatibility, which retain their existing checks. No terminal is renamed or added to make a model output pass.
+Once the plan is validated, each connection-detail alternative freezes its assigned ID, both exact endpoints and kind. Routing, gauge and color remain generated details. Two regressions failed before this fix and pass after it; Linux source665PASS/20SKIP/0FAIL and49focusedPASS. V13 uses the same car brief and sources in full auto mode; actual CAD, circuit, assembly, appearance and physical acceptance remain pending.
+
+V13 completed in298.63s but remained NOT_ACCEPTED: an assembly referenced an absent wire-harness, then extra build-item IDs collided with parts. The unknown-reference diagnostic now identifies the exact step/field/ID and expected namespace (parts or assembly steps), retaining validation and bounded retries. Regression reproduced before the fix; full Linux666PASS/20SKIP. V14 is an unchanged-input auto retest, not yet accepted.
+
+V14 ended297.54s NOT_ACCEPTED: a missing diode assembly step, then a battery bound to a motor profile. Workers stopped and45shared files unchanged. A further V13 replay showed simultaneous unknown-reference and supply-ID collisions; independent roster diagnostics now report reference, coverage and collision issues together without changing acceptance. This prevents the single retry from learning about only the first defect. Final source667PASS/20SKIP,32stage/runnerPASS. Real native CAD/circuit/assembly/appearance acceptance remains unresolved; these are retained failed trials, not a five-minute success.

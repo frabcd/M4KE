@@ -1,6 +1,7 @@
 import {isDeepStrictEqual as equal} from 'node:util';
 import {DESIGN_JSON_SCHEMA} from './studio-schema.mjs';
 import {ELECTRICAL_JSON_SCHEMA} from './studio-electrical.mjs';
+import {profileById,ELECTRICAL_PROFILES} from './studio-electrical-profiles.mjs';
 import {validateGenerationItem} from './studio-contract.mjs';
 import {parseGenerationJson} from './studio-generation-json.mjs';
 
@@ -23,6 +24,40 @@ export const PLAN_SCHEMA=obj({title:D.title,description:D.description,units:D.un
   assembly:arr(obj({id,partIds:arr(id,24,1),requires:arr(id,47)}),48,1),
   electrical:nullable(obj({components:arr(obj({partId:id,profileId:text}),32,1),connections:arr(obj({id,from:E.connections.items.properties.from,to:E.connections.items.properties.to,kind:E.connections.items.properties.kind}),96),control:bool})),
   buildItems:nullable(arr(id,40)),verificationRequests:nullable(arr(id,12)),physicsInputs:bool});
+
+// Intake text is already durable. Generate only new disclosures; the host copies
+// the exact originals into the same final plan contract, without model rewrites.
+const {requirements:_requirements,assumptions:_assumptions,unknowns:_unknowns,buildItems:buildItemIds,verificationRequests:verificationIds,...planChoices}=PLAN_SCHEMA.properties;
+// Parts are chosen in this same response, so their IDs cannot yet be bound in
+// the decoder. Exclude invented terminal spellings here; exact profile/part
+// membership remains a host invariant before any plan can be frozen.
+const proposedEndpoint=obj({partId:id,terminal:{type:'string',enum:[...new Set(ELECTRICAL_PROFILES.flatMap(p=>p.terminals.map(t=>t.id)))]}});
+const proposedConnections=arr(obj({id,from:proposedEndpoint,to:proposedEndpoint,kind:E.connections.items.properties.kind}),96);
+export const PLAN_PROPOSAL_SCHEMA=obj({...planChoices,parts:arr(obj({...PLAN_SCHEMA.properties.parts.items.properties,profileId:nullable({type:'string',enum:ELECTRICAL_PROFILES.map(p=>p.id)})}),24,1),electrical:nullable(obj({connections:proposedConnections,control:bool})),buildItemIds,verificationIds,newAssumptions:D.assumptions,newUnknowns:D.unknowns});
+export function planProposalSchema(readiness,sources){
+  const schema=structuredClone(PLAN_PROPOSAL_SCHEMA);
+  if(sources){
+    const alternatives=schema.properties.parts.items.properties.identity.anyOf;
+    alternatives[1].properties.catalogId={...id,enum:[...sources.catalogIds]};
+    alternatives[2].properties.sourceSha256={type:'string',enum:[...sources.libraryHashes]};
+    schema.properties.parts.items.properties.identity.anyOf=alternatives.filter((_,i)=>i===0||(i===1?sources.catalogIds:sources.libraryHashes).length);
+  }
+  const part=schema.properties.parts.items,identities=part.properties.identity.anyOf;
+  const noncatalog=identities.filter(s=>s.properties.type.const!=='catalog');
+  part.anyOf=[{...structuredClone(part),properties:{...structuredClone(part.properties),identity:{anyOf:structuredClone(noncatalog)}}},...(sources?.catalogIds||[]).map(catalogId=>{
+    const profileIds=ELECTRICAL_PROFILES.filter(p=>p.catalogId===catalogId).map(p=>p.id);
+    return {...structuredClone(part),properties:{...structuredClone(part.properties),kind:{const:'purchased'},identity:obj({type:{const:'catalog'},catalogId:{const:catalogId}}),profileId:profileIds.length?nullable({type:'string',enum:profileIds}):{type:'null'}}};
+  })];
+  schema.properties.newAssumptions.maxItems=40-(readiness?.assumptions?.length||0);
+  schema.properties.newUnknowns.maxItems=40-(readiness?.unknowns?.length||0);
+  return schema;
+}
+export function validateGenerationProposal(raw,context){
+  const {newAssumptions,newUnknowns,buildItemIds,verificationIds,parts,electrical,...choices}=safe(raw,planProposalSchema(context.readiness,context.sources));
+  const components=parts.filter(p=>p.profileId!==null).map(p=>({partId:p.id,profileId:p.profileId}));
+  if(!electrical&&components.length)fail('Electrical profiles require the electrical connection plan');
+  return validateGenerationPlan({...choices,parts:parts.map(({profileId,...p})=>p),electrical:electrical?{...electrical,components}:null,buildItems:buildItemIds,verificationRequests:verificationIds,requirements:context.readiness.requirements,assumptions:[...context.readiness.assumptions,...newAssumptions],unknowns:[...context.readiness.unknowns,...newUnknowns]},context);
+}
 
 function fail(message){throw Object.assign(new Error(message),{code:'GENERATION_CONTRACT'});}
 /** Small validator for the closed schema vocabulary used here (not arbitrary JSON Schema). */
@@ -64,14 +99,29 @@ export function validateGenerationPlan(raw,{readiness,sources={catalogIds:[],lib
     if(part.identity.type==='library'&&!sources.libraryHashes.includes(part.identity.sourceSha256))fail('unadmitted library identity');
     if(part.identity.type==='union'&&part.kind!=='printed')fail('union must be printed');
   }
-  const refs=(xs,set)=>{unique(xs);if(xs.some(x=>!set.has(x)))fail('unknown reference');};
-  for(const s of p.assembly){refs(s.partIds,ids);refs(s.requires,steps);}
+  const refs=(xs,set,field,namespace,issues=null)=>{unique(xs);const missing=xs.filter(x=>!set.has(x));if(missing.length){const message='unknown reference in '+field+': '+missing.slice(0,8).join(', ')+'. References must use '+namespace+' from this plan.';if(issues)issues.push(message);else fail(message);}};
+  // Independent roster errors can coexist. Report them together so the one
+  // remaining planning attempt can repair more than the first observed defect.
+  const rosterIssues=[];
+  for(const s of p.assembly){refs(s.partIds,ids,'assembly '+s.id+'.partIds','parts[].id',rosterIssues);refs(s.requires,steps,'assembly '+s.id+'.requires','assembly[].id',rosterIssues);}
+  const uncovered=p.parts.filter(part=>!p.assembly.some(s=>s.partIds.includes(part.id))).map(part=>part.id);
+  if(uncovered.length)rosterIssues.push('assembly coverage: missing part IDs '+uncovered.join(', ')+'. Include every listed part in an assembly step.');
+  const collided=p.buildItems?.filter(x=>ids.has(x));
+  if(collided?.length)rosterIssues.push('build item collides with part: '+collided.join(', ')+'. Extra supply IDs must differ from part IDs.');
+  if(rosterIssues.length)fail(rosterIssues.join('; '));
   const visited=new Set(),active=new Set();function visit(id){if(active.has(id))fail('assembly cycle');if(visited.has(id))return;active.add(id);p.assembly.find(s=>s.id===id).requires.forEach(visit);active.delete(id);visited.add(id);}steps.forEach(visit);
-  if(p.parts.some(part=>!p.assembly.some(s=>s.partIds.includes(part.id))))fail('assembly coverage');
-  if(p.electrical){const selected=new Set(p.electrical.components.map(c=>c.partId));refs([...p.electrical.components.map(c=>c.partId)],ids);unique(p.electrical.connections.map(c=>c.id));
-    for(const c of p.electrical.connections)if(!selected.has(c.from.partId)||!selected.has(c.to.partId))fail('connection reference');}
+  if(p.electrical){const selected=new Set(p.electrical.components.map(c=>c.partId));refs([...p.electrical.components.map(c=>c.partId)],ids,'electrical.components[].partId','parts[].id');unique(p.electrical.connections.map(c=>c.id));
+    for(const component of p.electrical.components){
+      const part=p.parts.find(part=>part.id===component.partId),profile=profileById(component.profileId);
+      if(part.kind!=='purchased')fail('electrical component must be purchased: '+part.id);
+      if(profile&&part.identity.type==='catalog'&&profile.catalogId!==part.identity.catalogId)fail('electrical/CAD identity conflict: '+part.id+' profile '+profile.id+' cannot use '+part.identity.catalogId+'; use its exact source or an assumed envelope');
+    }
+    for(const c of p.electrical.connections){
+      for(const key of ['from','to'])if(!selected.has(c[key].partId))fail('connection reference in '+c.id+'.'+key+'.partId: '+c[key].partId+'. Use a part with a selected electrical profile.');
+      for(const end of [c.from,c.to]){const profile=profileById(p.electrical.components.find(component=>component.partId===end.partId).profileId);if(profile&&!profile.terminals.some(t=>t.id===end.terminal))fail('unknown profile terminal: '+end.partId+':'+end.terminal+' for '+profile.id+'. Allowed: '+profile.terminals.map(t=>t.id).join(', ')+'. Use the selected profile roles; input-only ADC pins cannot drive outputs.');}
+    }}
   for(const k of ['buildItems','verificationRequests'])if(p[k])unique(p[k]);
-  if(p.buildItems?.some(x=>ids.has(x)))fail('build item collides with part');return p;
+  return p;
 }
 export function partitionGeneration(p){
   const units=[];
@@ -87,6 +137,26 @@ export function dependentUnitKeys(units,keys){const result=new Set(keys);let cha
 export function schemaForGenerationUnit(p,u){
   if(u.kind==='metadata')return obj({...p.physicsInputs?{physicsInputs:D.physicsInputs}:{},...p.verificationRequests!==null?{verificationRequests:D.verificationRequests}:{},...p.electrical?.control?{control:E.control}:{}});
   const schemas={part:D.parts.items,assembly:D.assembly.items,buildItem:D.buildItems.items,electricalComponent:E.components.items,connection:E.connections.items};
+  if(u.kind==='part')schemas.part={anyOf:u.ids.map(id=>{
+    const r=p.parts.find(part=>part.id===id);if(!r)fail('unknown planned part');
+    const item=structuredClone(D.parts.items);
+    for(const key of ['id','kind'])item.properties[key]={const:r[key]};
+    for(const key of ['position','rotation'])item.properties[key]={enum:[r[key]]};
+    const shape=item.properties.shape.anyOf.find(s=>s.properties.type.enum.includes(r.identity.type));
+    if(!shape)fail('unknown planned shape');
+    for(const [key,value]of Object.entries(r.identity))shape.properties[key]={const:value};
+    item.properties.shape=shape;
+    if(r.source===null||r.source===undefined)delete item.properties.source;
+    else{item.properties.source={const:r.source};item.required.push('source');}
+    return item;
+  })};
+  if(u.kind==='connection')schemas.connection={anyOf:u.ids.map(id=>{
+    const r=p.electrical.connections.find(c=>c.id===id);if(!r)fail('unknown planned connection');
+    const item=structuredClone(E.connections.items);
+    for(const key of ['id','kind'])item.properties[key]={const:r[key]};
+    for(const key of ['from','to'])item.properties[key]=obj({partId:{const:r[key].partId},terminal:{const:r[key].terminal}});
+    return item;
+  })};
   if(!schemas[u.kind])fail('unknown unit kind');return obj({items:arr(schemas[u.kind],u.ids.length,u.ids.length)});
 }
 export function validateGenerationUnit(p,u,raw,completed){

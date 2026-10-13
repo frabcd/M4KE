@@ -70,13 +70,16 @@ export const DESIGN_JSON_SCHEMA = freeze(object({
 // A small enum avoids unconstrained named colours without restoring expensive
 // regex grammars. The authoritative contract still accepts every valid RGB hex.
 const decoderColors=['#000000','#FFFFFF','#FF0000','#00FF00','#0000FF','#FFFF00','#00FFFF','#FF00FF','#FF8000','#800080','#808080','#202020','#247AAB','#F2AC43'];
-export function ollamaProjection(value) {
-  if (Array.isArray(value)) return value.map(ollamaProjection);
+export function ollamaProjection(value,{asciiIds=false}={}) {
+  if (Array.isArray(value)) return value.map(child=>ollamaProjection(child,{asciiIds}));
   if (!value || typeof value !== 'object') return value;
   const compatible=Object.fromEntries(Object.entries(value)
     .filter(([key]) => value.type !== 'string' || !['maxLength', 'pattern'].includes(key))
-    .map(([key, child]) => [key, ollamaProjection(child)]));
+    .map(([key, child]) => [key, ollamaProjection(child,{asciiIds})]));
   if(value.type==='string'&&value.pattern==='^#[0-9a-fA-F]{6}$')compatible.enum=[...decoderColors];
+  // Staged IDs need word syntax at decode time. A simple loop avoids expanding
+  // the bounded 64-character grammar; host validation still owns that limit.
+  if(asciiIds&&value.type==='string'&&value.pattern==='^[A-Za-z][A-Za-z0-9_-]{0,63}$')compatible.pattern='^[A-Za-z][A-Za-z0-9_-]*$';
   return compatible;
 }
 

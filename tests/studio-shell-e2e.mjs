@@ -207,6 +207,7 @@ const nativeCad = () => ({
     bounds: { min: [-20, -12.5, -8], max: [20, 12.5, 8] },
   })),
 });
+let delayNextViewRead = false;
 let view = {
   version: 0,
   selectedPartIds: [],
@@ -278,7 +279,10 @@ await page.route("**/api/studio/**", async (route) => {
     return respond(project, 201);
   }
   if (p === `/api/studio/projects/${projectId}/view`) {
-    if (!body) return respond(view);
+    if (!body) {
+      if (delayNextViewRead) {delayNextViewRead=false;await new Promise(r=>setTimeout(r,250));}
+      return respond(view);
+    }
     assert.equal(body.expectedVersion, view.version);
     const { expectedVersion, ...next } = body;
     const confirmedIds = new Set(project.spec?.parts.map(part => part.id) || []);
@@ -613,13 +617,19 @@ try {
           ?.getAttribute("data-hidden-ids")
           ?.includes("chassis"),
       );
+      const savedSelection=page.waitForResponse(response=>{
+        const request=response.request();if(!request.url().endsWith(`/projects/${projectId}/view`)||request.method()!=='PUT')return false;
+        const body=request.postDataJSON();return body.selectedPartIds?.length===1&&body.selectedPartIds[0]==='chassis'&&response.ok();
+      });
       await row("Printed base").locator(".tree-select").click();
-      await page.waitForTimeout(500);
+      await savedSelection;
       assert.equal(project.revision, before.revision);
       assert.equal(project.designHash, before.hash);
       assert.equal(designWrites().length, before.writes);
+      delayNextViewRead=true;
       await page.reload();
       await page.locator(".studio-viewport").waitFor();
+      await row("Printed base").locator('.tree-select[aria-pressed="true"]').waitFor();
       assert.equal(
         await row("Printed base")
           .locator(".tree-select")
