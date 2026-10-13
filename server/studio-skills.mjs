@@ -31,7 +31,7 @@ function requireSkills(skills) {
 }
 
 /** Call loadStudioSkills first; returned messages are ready for local Ollama /api/chat. */
-export const GEOMETRY_EXTENSION_RULES='Host execution extension: geometryVersion:2 supersedes only legacy shape/optional-key limits. It permits profileExtrusion,profileLoft,datums and placement per the supplied schema; profiles are printed, unfilleted and use their explicit local origin. The designer owns geometry, frames and topology. Host resolves attached child poses and measures declared contacts. Native meshes required; source immutability and physical UNKNOWN remain. No arbitrary code or inferred interfaces.';
+export const GEOMETRY_EXTENSION_RULES='Host execution extension: geometryVersion:2 supersedes only legacy shape/optional-key limits: profileExtrusion,profileLoft,datums,placement per schema. Profiles:printed,unfilleted,explicit local origin. Designer owns geometry/frames/topology; host resolves child poses/measures contacts. Native meshes required; immutable sources; physical UNKNOWN. No arbitrary code/inferred interfaces.';
 
 export function buildDesignMessages({ request, answers = {}, previousSpec = null, repairErrors = [], failedDraft = null, skills, catalog = null, candidateContext = null, libraryContext = null, sourcingContext = null, electricalProfiles = null, architecturePlan = null, assistantContext = null }) {
   requireSkills(skills);

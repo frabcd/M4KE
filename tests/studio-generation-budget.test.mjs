@@ -3,6 +3,12 @@ import {createGenerationCheckpointStore,generationIdentity,hashGenerationValue}f
 import {readiness,plan}from'./helpers/staged-generation-fixture.mjs';
 import {partitionGeneration}from'../server/studio-generation-stages.mjs';
 async function setup(n=24){const root=await mkdtemp(path.join(tmpdir(),'m4ke-budget-')),i=generationIdentity({projectId:randomUUID(),request:'test',answers:[],model:{digest:'a'},skillHash:'b',schemaHash:'c',sourceHash:'d',contextHash:hashGenerationValue({})});const store=createGenerationCheckpointStore({root}),h=await store.create({projectId:i.identity.projectId,identity:i,contextSnapshot:{}});await h.saveReadiness(readiness());await h.savePlan(plan(n));return {root,i,h};}
+test('planning reserves its larger allowance within the unchanged total budget',async()=>{
+ const {h}=await setup();const r=await h.reserve({unitKey:'plan',tokenLimit:5000,timeoutMs:300000});
+ assert.equal(h.remaining().requestedOutputTokens,55000);assert.equal(h.remaining().requests,63);assert.equal(h.remaining().activeMs,2100000);
+ await h.settle(r.reservationId,{elapsedMs:100,outcome:'length'});assert.equal(h.remaining().requestedOutputTokens,55000);
+ await assert.rejects(()=>h.reserve({unitKey:'plan',tokenLimit:5001,timeoutMs:300000}));
+});
 test('allowances are reserved before dispatch and cannot be refunded on restart',async()=>{
  const {root,i,h}=await setup();const r=await h.reserve({unitKey:'readiness',tokenLimit:1500,timeoutMs:180000});assert.equal(h.remaining().requests,63);assert.equal(h.remaining().activeMs,2220000);
  const restored=await createGenerationCheckpointStore({root}).load({projectId:i.identity.projectId,generationId:h.id,identity:i});assert.deepEqual(restored.remaining(),h.remaining());

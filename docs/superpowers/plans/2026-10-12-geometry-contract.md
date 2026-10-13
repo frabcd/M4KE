@@ -49,3 +49,13 @@
 - Next: full source/build/native regressions and final independent review, then publish reviewable integration and coordinate actual-model retest. This is not end-to-end acceptance.
 
 - Integration final review: fixed system-level legacy grammar contradiction and datum decoder omissions with failing/passing regressions. Fixed host-only capability text never promotes task data to instructions. Added guidance source to checkpoint identity. Full677PASS/21SKIP; native7PASS; focused64PASS; after hash hardening34PASS; syntax228/buildPASS. Actual model test remains pending free coordinated GPU. See verification/2026-10-13-geometry-quality-integration.md.
+
+
+## 2026-10-13 actual-model follow-up
+- User requested latest teammate fix and isolated testing. Their published PR15 remained 374e828; reviewed the released DGX v12 budget patch by source hashes and integrated only planning allowance/accounting changes.
+- Ruling: retain the original coordinated 09:52:39 UTC cutoff across the harness correction and decoder retest. No extension, shared app changes or competing inference.
+- Combined 122B airplane intake now passes, but planning stopped on profiles with no circuit after136.08s. NOT_ACCEPTED; 49 shared files unchanged and own workers stopped.
+- RED: decoder admitted orphan profiles in a plan with electrical:null. GREEN: unpowered schema requires null profiles; printed schema excludes electrical profiles. Existing host rejection and product-design ownership preserved. Focused58PASS Windows/Linux, clean full679PASS/21SKIP; independent29PASS. Residual all-null/empty non-null circuit remains host-rejected and is documented, not normalized away.
+- Second fresh model test uses another isolated source snapshot, unchanged request and original deadline. Save its actual receipt before claiming any further stage success.
+
+- Second model run ended126.01s at the existing version gate, with no orphan electrical-profile diagnostic. RED/GREEN added decoder version coupling for profiles/datums/placement and preserved legacy plans. Full680PASS/21SKIP, focused59PASS Windows/Linux; independent16tests+14variants. Third run is isolated with unchanged request and original deadline. No real model acceptance yet.

@@ -41,16 +41,42 @@ export function planProposalSchema(readiness,sources){
   }
   const part=schema.properties.parts.items,identities=part.properties.identity.anyOf;
   const noncatalog=identities.filter(s=>s.properties.type.const!=='catalog');
-  part.anyOf=[{...structuredClone(part),properties:{...structuredClone(part.properties),identity:{anyOf:structuredClone(noncatalog)}}},...(sources?.catalogIds||[]).map(catalogId=>{
+  part.anyOf=[
+    ...['printed','purchased'].map(kind=>({...structuredClone(part),properties:{...structuredClone(part.properties),kind:{const:kind},identity:{anyOf:structuredClone(noncatalog)},...kind==='printed'?{profileId:{type:'null'}}:{}}})),
+    ...(sources?.catalogIds||[]).map(catalogId=>{
     const profileIds=ELECTRICAL_PROFILES.filter(p=>p.catalogId===catalogId).map(p=>p.id);
     return {...structuredClone(part),properties:{...structuredClone(part.properties),kind:{const:'purchased'},identity:obj({type:{const:'catalog'},catalogId:{const:catalogId}}),profileId:profileIds.length?nullable({type:'string',enum:profileIds}):{type:'null'}}};
   })];
   schema.properties.newAssumptions.maxItems=40-(readiness?.assumptions?.length||0);
   schema.properties.newUnknowns.maxItems=40-(readiness?.unknowns?.length||0);
+  // Express existing host invariants in the decoder, without dropping the
+  // model's choices after generation or deciding whether a design is powered.
+  const unpowered=structuredClone(schema),powered=structuredClone(schema);
+  unpowered.properties.electrical={type:'null'};
+  const unpoweredPart=unpowered.properties.parts.items;
+  unpoweredPart.properties.profileId={type:'null'};
+  for(const variant of unpoweredPart.anyOf)variant.properties.profileId={type:'null'};
+  powered.properties.electrical=powered.properties.electrical.anyOf[0];
+  schema.anyOf=[unpowered,powered].flatMap(branch=>{
+    const versioned=structuredClone(branch),legacy=structuredClone(branch);
+    versioned.required.push('geometryVersion');
+    delete legacy.properties.placement;
+    const legacyPart=legacy.properties.parts.items;
+    for(const variant of [legacyPart,...legacyPart.anyOf]){
+      delete variant.properties.datumIds;
+      for(const shape of variant.properties.identity.anyOf||[]){
+        if(shape.properties.type.enum)shape.properties.type.enum=shape.properties.type.enum.filter(type=>!['profileExtrusion','profileLoft'].includes(type));
+      }
+    }
+    return [versioned,legacy];
+  });
   return schema;
 }
 export function validateGenerationProposal(raw,context){
-  const {newAssumptions,newUnknowns,buildItemIds,verificationIds,parts,electrical,...choices}=safe(raw,planProposalSchema(context.readiness,context.sources));
+  // Keep field-specific host errors; the root decoder alternatives repeat the
+  // existing cross-field check immediately below rather than replacing it.
+  const {anyOf:_decoderAlternatives,...hostSchema}=planProposalSchema(context.readiness,context.sources);
+  const {newAssumptions,newUnknowns,buildItemIds,verificationIds,parts,electrical,...choices}=safe(raw,hostSchema);
   const components=parts.filter(p=>p.profileId!==null).map(p=>({partId:p.id,profileId:p.profileId}));
   if(!electrical&&components.length)fail('Electrical profiles require the electrical connection plan');
   return validateGenerationPlan({...choices,parts:parts.map(({profileId,...p})=>p),electrical:electrical?{...electrical,components}:null,buildItems:buildItemIds,verificationRequests:verificationIds,requirements:context.readiness.requirements,assumptions:[...context.readiness.assumptions,...newAssumptions],unknowns:[...context.readiness.unknowns,...newUnknowns]},context);

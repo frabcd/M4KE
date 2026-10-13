@@ -122,3 +122,32 @@ test('part decoder freezes each assigned identity, pose and nullable source like
  }
 });
 test('decoder readiness alternatives enforce the same status/question invariant as host',()=>{const question={id:'q1',question:'Which interface?'};for(const schema of [READINESS_SCHEMA,ollamaProjection(READINESS_SCHEMA)]){assert.doesNotThrow(()=>assertGenerationSchema(readiness(),schema));assert.doesNotThrow(()=>assertGenerationSchema({...readiness(),status:'questions',questions:[question]},schema));assert.throws(()=>assertGenerationSchema({...readiness(),status:'ready',questions:[question]},schema));assert.throws(()=>assertGenerationSchema({...readiness(),status:'questions',questions:[]},schema));}});
+
+
+test('proposal decoder prevents profiles on an unpowered plan or printed part',()=>{
+ const context={readiness:readiness(),sources:{catalogIds:['pololu-lp6v-1098'],libraryHashes:[]}};
+ const p=plan(2),plain=proposal(p),powered=structuredClone(plain);
+ powered.parts[0].kind='purchased';powered.parts[0].profileId='battery-dc';powered.electrical={connections:[],control:false};
+ for(const decoder of [planProposalSchema(context.readiness,context.sources),ollamaProjection(planProposalSchema(context.readiness,context.sources),{asciiIds:true})]){
+  assert.doesNotThrow(()=>assertGenerationSchema(plain,decoder));
+  assert.doesNotThrow(()=>assertGenerationSchema(powered,decoder));
+  const orphan=structuredClone(powered);orphan.electrical=null;
+  assert.throws(()=>assertGenerationSchema(orphan,decoder),'No circuit must require null profiles in the decoder, not only final validation');
+  const printed=structuredClone(powered);printed.parts[0].kind='printed';
+  assert.throws(()=>assertGenerationSchema(printed,decoder),'Electrical components cannot be printed shells');
+ }
+ assert.deepEqual(validateGenerationProposal(plain,context),p);
+});
+
+
+test('decoder requires version 2 for profile shapes or named datums while retaining legacy plans',()=>{
+ const context={readiness:readiness(),sources:{catalogIds:[],libraryHashes:[]}};
+ for(const decoder of [planProposalSchema(context.readiness,context.sources),ollamaProjection(planProposalSchema(context.readiness,context.sources),{asciiIds:true})]){
+  assert.doesNotThrow(()=>assertGenerationSchema(proposal(plan()),decoder));
+  for(const change of [p=>p.parts[0].identity={type:'profileLoft'},p=>p.parts[0].identity={type:'profileExtrusion'},p=>p.parts[0].datumIds=['mount'],p=>p.placement={version:1,roots:p.parts.map(part=>({partId:part.id,reason:'Regression root'})),attachments:[]}]){
+   const raw=proposal(plan());change(raw);
+   assert.throws(()=>assertGenerationSchema(raw,decoder),'V2 features must not decode without their version');
+   raw.geometryVersion=2;assert.doesNotThrow(()=>assertGenerationSchema(raw,decoder));
+  }
+ }
+});
