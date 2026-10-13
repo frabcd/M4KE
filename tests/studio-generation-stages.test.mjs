@@ -65,6 +65,16 @@ test('planning diagnostics identify uncovered parts and colliding supply IDs for
  p.assembly[0].partIds.push('p1');p.buildItems=['p1'];
  assert.throws(()=>validateGenerationPlan(p,{readiness:readiness()}),/collides with part: p1/);
 });
+test('planning retry names the exact invalid assembly reference and its namespace',()=>{
+ const p=plan(2);p.assembly[0].partIds.push('wire-harness');
+ assert.throws(()=>validateGenerationPlan(p,{readiness:readiness()}),e=>e.message.includes('assembly inspect.partIds')&&e.message.includes('wire-harness')&&e.message.includes('parts[].id'));
+ p.assembly[0].partIds.pop();p.assembly[0].requires=['p0'];
+ assert.throws(()=>validateGenerationPlan(p,{readiness:readiness()}),e=>e.message.includes('assembly inspect.requires')&&e.message.includes('p0')&&e.message.includes('assembly[].id'));
+});
+test('one bounded planning retry receives simultaneous roster defects',()=>{
+ const p=plan(2);p.assembly[0].partIds=['p0','wire-harness'];p.buildItems=['p0'];
+ assert.throws(()=>validateGenerationPlan(p,{readiness:readiness()}),e=>e.message.includes('wire-harness')&&e.message.includes('missing part IDs p1')&&e.message.includes('collides with part: p0')&&e.message.length<1000);
+});
 test('planning can disclose new assumptions and unknowns without erasing intake evidence',()=>{
   const ready={...readiness(),assumptions:['User delegated reversible material choice'],unknowns:['Physical fit has not been tested']};
   const p={...plan(),assumptions:[...ready.assumptions,'MODEL_ASSUMED prototype material'],unknowns:[...ready.unknowns,'Newly discovered interface measurement missing']};
@@ -111,6 +121,45 @@ test('units reject missing extra duplicate IDs and changed poses; assembly uses 
 });
 import {READINESS_SCHEMA,assertGenerationSchema,schemaForGenerationUnit} from '../server/studio-generation-stages.mjs';
 import {ollamaProjection} from '../server/studio-schema.mjs';
+import {ELECTRICAL_PROFILES} from '../server/studio-electrical-profiles.mjs';
+
+test('planning decoder rejects invented pins without rewriting supported terminal names',()=>{
+ const endpoint=ollamaProjection(planProposalSchema(readiness()),{asciiIds:true}).properties.electrical.anyOf[0].properties.connections.items.properties.from;
+ for(const profile of ELECTRICAL_PROFILES)for(const terminal of profile.terminals)assert.doesNotThrow(()=>assertGenerationSchema({partId:'controller',terminal:terminal.id},endpoint));
+ for(const terminal of ['IO5','GPIO4','34','invented'])assert.throws(()=>assertGenerationSchema({partId:'controller',terminal},endpoint));
+ const p=plan();p.parts[0].kind='purchased';p.electrical={components:[{partId:'p0',profileId:'esp32-devkitc-v4-wroom32e'}],connections:[{id:'wire',from:{partId:'p0',terminal:'GP4'},to:{partId:'p0',terminal:'GND'},kind:'signal'}],control:false};
+ // A pin valid on another profile must still fail the exact component check.
+ assert.throws(()=>validateGenerationProposal(proposal(p),{readiness:readiness()}),e=>e.message.includes('p0:GP4')&&e.message.includes('esp32-devkitc-v4-wroom32e')&&e.message.includes('IO4')&&!e.message.includes('IO5'));
+});
+
+test('connection decoder freezes both endpoints and kind for each assigned wire',()=>{
+ const p=plan(2);p.electrical={components:[{partId:'p0',profileId:'battery-dc'},{partId:'p1',profileId:'fuse-series'}],connections:[{id:'supply',from:{partId:'p0',terminal:'+'},to:{partId:'p1',terminal:'IN'},kind:'power'}],control:false};
+ const unit=partitionGeneration(p).find(u=>u.kind==='connection'),wire={...p.electrical.connections[0],color:'#808080',wireAwg:24};
+ for(const schema of [schemaForGenerationUnit(p,unit),ollamaProjection(schemaForGenerationUnit(p,unit),{asciiIds:true})]){
+  assert.doesNotThrow(()=>assertGenerationSchema({items:[wire]},schema));
+  for(const mutate of [w=>w.from.terminal='-',w=>w.to.partId='p0',w=>w.kind='signal',w=>w.id='other']){
+   const bad=structuredClone(wire);mutate(bad);assert.throws(()=>assertGenerationSchema({items:[bad]},schema));
+  }
+ }
+});
+
+test('assembly decoder freezes each assigned step and its exact references without freezing prose',()=>{
+ const p=plan(3);p.assembly=[{id:'base',partIds:['p0'],requires:[]},{id:'attach',partIds:['p1','p2'],requires:['base']}];
+ const u=partitionGeneration(p).find(u=>u.kind==='assembly'),good=payload(p,u),before=JSON.stringify(p);
+ for(const schema of [schemaForGenerationUnit(p,u),ollamaProjection(schemaForGenerationUnit(p,u),{asciiIds:true})]){
+  assert.doesNotThrow(()=>assertGenerationSchema(good,schema));
+  for(const mutate of [v=>v.items[0].id='invented',v=>v.items[0].partIds=['p1'],v=>v.items[1].partIds.reverse(),v=>v.items[1].partIds.push('p0'),v=>v.items[1].requires=[],v=>v.items[0].requires=['attach']]){
+   const bad=structuredClone(good);mutate(bad);assert.throws(()=>assertGenerationSchema(bad,schema),'Decoder must reject changed references before host admission');
+   assert.throws(()=>validateGenerationUnit(p,u,bad,[]));
+  }
+  const prose=structuredClone(good);prose.items.reverse();prose.items[0].instructions=['Model-authored detailed instruction'];assert.doesNotThrow(()=>assertGenerationSchema(prose,schema));
+  assert.equal(validateGenerationUnit(p,u,prose,[]).items[1].instructions[0],'Model-authored detailed instruction');
+ }
+ assert.equal(JSON.stringify(p),before);
+ const duplicate=structuredClone(good);duplicate.items[1]=duplicate.items[0];assert.throws(()=>validateGenerationUnit(p,u,duplicate,[]),/duplicate/);
+ const split={...u,ids:['attach']};assert.doesNotThrow(()=>assertGenerationSchema({items:[good.items[1]]},schemaForGenerationUnit(p,split)));
+ assert.throws(()=>assertGenerationSchema({items:[good.items[0]]},schemaForGenerationUnit(p,split)));
+});
 
 test('part decoder freezes each assigned identity, pose and nullable source like host validation',()=>{
  const p=plan(2),u=partitionGeneration(p)[0],good=payload(p,u);for(const part of good.items)part.color='#808080';

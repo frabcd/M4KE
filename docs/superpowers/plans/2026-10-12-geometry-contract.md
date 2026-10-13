@@ -77,3 +77,9 @@
 - Earliest unfinished step is verification of the existing automatic native repair path. The private test used design mode plus a separate build, bypassing runWorkflow's native-check/patch/rebuild loop. Preserve failed initial geometry evidence; defer new layout architecture until the existing path is exercised.
 - Applied conductor routing, systematic-debugging source tracing, TDD for benchmark receipt/mode regressions, and inspect-3d's distinction between artifact availability and revision-bound verification. Independent review added verification.revisionHash binding.
 - Local private supervisor prepared for explicit auto mode; no separate build, no launch, original receipts preserved. User's previous 18:34 Singapore cutoff remains expired. Next live test requires a new approved window and teammate slot release.
+
+
+## Assembly-reference follow-up
+- User continued after the auto run failed. Systematic-debugging traced mismatch between unrestricted assembly decoder and exact-reference host gate; TDD reproduced it before the fix. Reused existing wire/part decoder patterns.
+- Integrate reviewed upstream PR15 5c41472 in our isolated branch, retaining V2 and benchmark fixes. Pin each assembly step's references in its decoder; preserve host rules and upstream product-design ownership. No benchmark geometry or source modifications.
+- inspect-3d evidence boundary retained: local source/decoder tests are not native or visual success. Full691PASS21SKIP, syntax228PASS; independent review and build recorded in verification report. Next actual-model run needs separate time approval; previous one-run authorization was consumed.

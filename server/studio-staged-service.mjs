@@ -28,7 +28,7 @@ const sectionStages=new Map([
  ['Ask the host to verify your design — verificationRequests',['metadata']],
  ['September 28 electrical and motion contract',['electricalComponent','connection','metadata','assembly','buildItem']],
  ['Source-catalog mating checks',['part','metadata','assembly']],
- ['Online research boundary',['plan','metadata','buildItem']],
+ ['Online research boundary',['metadata','buildItem']],
 ]);
 export function buildStagedMessages({unit,contextSnapshot,state={}}){
  const skills=contextSnapshot.stageSkills;

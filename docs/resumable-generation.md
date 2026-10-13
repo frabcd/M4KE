@@ -186,3 +186,20 @@ geometry still has the existing unqualified-source/engineering boundaries.
 Uncovered assembly diagnostics now identify the exact missing part IDs. Complete
 source regression662 passed,20 skipped;22 browser workflow checks passed with a
 controlled delayed view-state restore. Real car acceptance remains pending.
+
+After actual repeated4000-token car-plan truncations, the planning allowance is
+5000 tokens per attempt. The durable60000-token/64-request/40-minute total remains
+unchanged and reservations cannot be refunded by short output or restart. The
+planning route omits duplicated application REQUEST_GUIDANCE; original request,
+answers, source facts, upstream skill rules and later-stage/host constraints remain.
+The complete-message context test now reserves5000 output tokens plus1024 overhead.
+Current source regression663 passed,20 skipped,0 failed. The car's end-to-end native
+CAD/electrical/assembly/visual acceptance remains pending.
+
+### 2026-10-13: exact terminal vocabulary and immutable wire details
+The real car run V12 completed both planning responses but failed on an unsupported ESP32 IO5 endpoint (389.34 seconds overall; NOT_ACCEPTED). The proposal decoder now admits only terminal spellings from the existing electrical profiles. Cross-part selection is still checked against the actual selected profile before freezing; a mismatch reports that profile and its allowed terminals. This union vocabulary does not prove role or power compatibility, which retain their existing checks. No terminal is renamed or added to make a model output pass.
+Once the plan is validated, each connection-detail alternative freezes its assigned ID, both exact endpoints and kind. Routing, gauge and color remain generated details. Two regressions failed before this fix and pass after it; Linux source665PASS/20SKIP/0FAIL and49focusedPASS. V13 uses the same car brief and sources in full auto mode; actual CAD, circuit, assembly, appearance and physical acceptance remain pending.
+
+V13 completed in298.63s but remained NOT_ACCEPTED: an assembly referenced an absent wire-harness, then extra build-item IDs collided with parts. The unknown-reference diagnostic now identifies the exact step/field/ID and expected namespace (parts or assembly steps), retaining validation and bounded retries. Regression reproduced before the fix; full Linux666PASS/20SKIP. V14 is an unchanged-input auto retest, not yet accepted.
+
+V14 ended297.54s NOT_ACCEPTED: a missing diode assembly step, then a battery bound to a motor profile. Workers stopped and45shared files unchanged. A further V13 replay showed simultaneous unknown-reference and supply-ID collisions; independent roster diagnostics now report reference, coverage and collision issues together without changing acceptance. This prevents the single retry from learning about only the first defect. Final source667PASS/20SKIP,32stage/runnerPASS. Real native CAD/circuit/assembly/appearance acceptance remains unresolved; these are retained failed trials, not a five-minute success.
