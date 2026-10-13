@@ -553,8 +553,8 @@
       "bytes": 1062
     },
     "server/studio-contract.mjs": {
-      "sha256": "67be3986684410f7477ddd286a95e739e1ef70d86a5d1b02a4657bf3908959d1",
-      "bytes": 36068
+      "sha256": "56d48220479b2900ba726129654006cd8a82d99f21a4ea1f454fb433d61cf6f8",
+      "bytes": 36152
     },
     "server/studio-electrical-profiles.mjs": {
       "sha256": "388ddb40dbb419c837e1cd9d38cdf82d5ad1e33b1d4413d10c3770bbaf20475e",
@@ -665,12 +665,12 @@
       "bytes": 9369
     },
     "server/studio-service.mjs": {
-      "sha256": "32520b9db5d261824c7ad8314cc486068f51c56ec8a563707de042c6fb8ed5c2",
-      "bytes": 84036
+      "sha256": "b2dd19f50377cf8e6bdd61d42a1e3dab06e7edb924b3911bc78580253387e7c4",
+      "bytes": 84374
     },
     "server/studio-skills.mjs": {
-      "sha256": "dbc98535bfc1c0d5fc0aeb2bd8e7480e3f14e46615cc7e6cf350b231fb17bda1",
-      "bytes": 10446
+      "sha256": "081aa2df99b4ecbbd4684b35da4e2c32b76dda2dc5ee08558b61c869bcb2a72f",
+      "bytes": 10667
     },
     "server/studio-staged-generation.mjs": {
       "sha256": "95c85e8e10dbf2d39dfd28b3c5ff70799a19df699baf08c95148777f1d712507",
@@ -1201,8 +1201,8 @@
       "bytes": 1977
     },
     "tests/studio-contract.test.mjs": {
-      "sha256": "a15feb726a20ec1180215a1bfee3c548f98ff40f2f5689054ab6fda52407c04f",
-      "bytes": 13115
+      "sha256": "bdb2bbc38a23f842ac12ff687d0355baf67c88f5ab04cf7ce68fadff9615d673",
+      "bytes": 14098
     },
     "tests/studio-draft-preflight.test.mjs": {
       "sha256": "66453bb42bdd489579f35b6abad506d070202845534af0401e5445aee95ff7ef",
@@ -1321,8 +1321,8 @@
       "bytes": 14087
     },
     "tests/studio-repair-execution.test.mjs": {
-      "sha256": "8eb6d8a43ce97980909831d5b07c6f413e80882573b00674c7f26a6bceee30db",
-      "bytes": 14708
+      "sha256": "26b37978964d0a38440bbd3afd7096b09fd5f350c1f55b19a3fd71117c9f55a9",
+      "bytes": 15482
     },
     "tests/studio-review.test.mjs": {
       "sha256": "9a72f95c208832e2d8caa208628f2a64483605514a7b556f504f0ee96a67887d",

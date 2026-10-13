@@ -154,3 +154,19 @@ test('runtime loads real normalized skill bytes with reproducible source hashes'
   const review = buildReviewMessages({ spec: design(), report: verifyDesign(design()), skills });
   assert.match(review[0].content, /NOT the evidence authority/); assert.match(review[0].content, /no claim status overrides/);
 });
+
+
+test('aggregate CAD failure exposes assembly errors without calling valid individual solids invalid', () => {
+  const spec=design(),cad=evidence(spec);
+  cad.errors=['assembly:overlaps: Assembly solid intersections failed'];
+  cad.checks=[{id:'assembly:overlaps',status:'FAIL',label:'Assembly solid intersections',observed:[{parts:['block','other'],volumeMm3:2}],required:'No positive intersection'}];
+  const report=verifyDesign(spec,cad),aggregate=claim(report,'cad-solids');
+  assert.equal(aggregate.status,'FAIL');
+  assert.equal(aggregate.label,'Current-revision CAD kernel result');
+  assert.match(aggregate.observed,/assembly:overlaps: Assembly solid intersections failed/);
+  assert.equal(claim(report,'part-block').status,'PASS');
+  assert.equal(claim(report,'kernel-assembly:overlaps').status,'FAIL');
+  assert.equal(report.overall,'FAILED');
+  const stale={...cad,revisionHash:'stale'};
+  assert.equal(claim(verifyDesign(spec,stale),'cad-solids').status,'UNKNOWN');
+});

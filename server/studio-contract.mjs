@@ -269,7 +269,7 @@ export function verifyDesign(input, cadResult = null) {
     if(records.length!==1)add(`attachment-evidence-${attachment.id}`,'Declared attachment evidence','UNKNOWN',true,'Exact current-revision native check coverage',`${records.length} matching records`,attachment.verification,'Missing or duplicate attachment evidence cannot establish contact or frame consistency.');
   }
   if (!matching) {
-    add('cad-solids', 'Current-revision CAD kernel solids', 'UNKNOWN', true, 'Revision-bound CAD worker result', cadResult ? 'Stale or missing revision hash' : 'No kernel result', 'Matching revision; exactly one valid positive-volume solid per declared part', 'A render, filename, model assertion or earlier revision is not CAD evidence.');
+    add('cad-solids', 'Current-revision CAD kernel result', 'UNKNOWN', true, 'Revision-bound CAD worker result', cadResult ? 'Stale or missing revision hash' : 'No kernel result', 'Matching revision; exactly one valid positive-volume solid per declared part', 'A render, filename, model assertion or earlier revision is not CAD evidence.');
   } else {
     const records = Array.isArray(cadResult.parts) ? cadResult.parts : [];
     const expected = new Set(spec.parts.map((p) => p.id)); const ids = records.map((p) => p?.id);
@@ -280,7 +280,7 @@ export function verifyDesign(input, cadResult = null) {
     };
     const explicitFailure = Array.isArray(cadResult.errors) && cadResult.errors.length > 0 || records.some((p) => p?.valid === false || typeof p?.volumeMm3 === 'number' && (!Number.isFinite(p.volumeMm3) || p.volumeMm3 <= 0) || typeof p?.solidCount === 'number' && !countsOK(p));
     const valid = exact && records.length > 0 && records.every((p) => p.valid === true && Number.isFinite(p.volumeMm3) && p.volumeMm3 > 0 && countsOK(p));
-    add('cad-solids', 'Current-revision CAD kernel solids', explicitFailure ? 'FAIL' : valid ? 'PASS' : 'UNKNOWN', true, 'CAD worker validity, volume, solid count and exact part-ID coverage', `${records.length}/${expected.size} part records; exact coverage ${exact}; valid ${valid}`, 'One printed solid; purchased catalog components may contain multiple positive solids', 'Catalog source geometry is hash-bound but not physical fit certification. Other purchased geometry remains an envelope.');
+    add('cad-solids', 'Current-revision CAD kernel result', explicitFailure ? 'FAIL' : valid ? 'PASS' : 'UNKNOWN', true, 'CAD worker errors, validity, volume, solid count and exact part-ID coverage', `${records.length}/${expected.size} part records; exact coverage ${exact}; valid ${valid}; worker errors: ${JSON.stringify(cadResult.errors || [])}`, 'No worker errors; one printed solid; purchased catalog components may contain multiple positive solids', 'Catalog source geometry is hash-bound but not physical fit certification. Other purchased geometry remains an envelope.');
     for (const part of spec.parts) {
       const matches = records.filter((p) => p?.id === part.id);
       const record = matches.length === 1 ? matches[0] : null;
