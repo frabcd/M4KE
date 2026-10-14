@@ -45,8 +45,8 @@
       "bytes": 1074
     },
     "README.md": {
-      "sha256": "d633ec8237ef162cef9c1ceb0ae9400b9d20ce5db10bcd6d5a8262e5e52bea05",
-      "bytes": 12765
+      "sha256": "c3c9266880184e5b2a0122ffb02fddb20c224754f3091774ef371cf0e309f199",
+      "bytes": 11318
     },
     "SECURITY.md": {
       "sha256": "682010bc0c4566063d424b3ce8319d05112701250b5952522efb0d7eb9910aa7",
@@ -1349,8 +1349,8 @@
       "bytes": 11712
     },
     "texting.txt": {
-      "sha256": "d18b0a25f1e529eb3359d8d488cde92fa9eadc0ea7af93de72a458fccd6a97a3",
-      "bytes": 29956
+      "sha256": "d242c5af74378041a66a11e43a29d415087321e58f15f25b368cb7fbda149e4b",
+      "bytes": 30506
     },
     "tsconfig.json": {
       "sha256": "5254b6412d77d8bcbcf50652402d4ee45a1379d3335cb3c155367e886961e51c",
